@@ -17,7 +17,9 @@ bool fw_add(f_State *s);
 bool fw_sub(f_State *s);
 bool fw_mul(f_State *s);
 bool fw_div(f_State *s);
+bool fw_printInt(f_State *s);
 bool fw_words(f_State *s);
+bool fw_show(f_State *s);
 
 int main(void) {
 	f_State s;
@@ -27,7 +29,9 @@ int main(void) {
 	f_State_defineWord(&s, "-", fw_sub, false);
 	f_State_defineWord(&s, "*", fw_mul, false);
 	f_State_defineWord(&s, "/", fw_div, false);
+	f_State_defineWord(&s, ".", fw_printInt, false);
 	f_State_defineWord(&s, "words", fw_words, false);
+	f_State_defineWord(&s, "show", fw_show, false);
 
 	f_State_evalString(&s, "\\ Welcome to QuickForth v0.3.", true);
 	f_State_evalString(&s, "\\ Type 'words' to list words.", true);
@@ -105,10 +109,23 @@ DEFWORD(fw_div, {
 	return true;
 })
 
+DEFWORD(fw_printInt, {
+	TRY_POP(n);
+	fprintf(stderr, "%d", n);
+	return true;
+})
+
 bool fw_words(f_State *s) {
 	Dict_Iterator it = Dict_iter(&s->words);
 	Dict_Entry *e = NULL;
 	while ((e = Dict_iterNext(&it)) != NULL) {
 		fprintf(stderr, "%s ", e->key);
+	}
+}
+
+bool fw_show(f_State *s) {
+	size_t i = 0;
+	for (; i < s->working_stack.len; i++) {
+		fprintf(stderr, "%d ", s->working_stack.buf[i]);
 	}
 }

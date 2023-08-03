@@ -17,6 +17,22 @@ static bool f_Stack_alloc(f_Stack *f) {
 	return true;
 }
 
+static bool f_tryParseItem(StringView s, f_Item *it) {
+	f_Item mul = 1;
+	f_Item result = 0;
+
+	size_t i = 0;
+	for (; i < s.len; i++) {
+		char c = s.ptr[s.len - 1 - i];
+		if (c < '0' || c > '9') return false;
+		result += (f_Item)(c - '0') * mul;
+		mul *= 10;
+	}
+
+	*it = result;
+	return true;
+}
+
 bool f_Stack_init(f_Stack *f) {
 	f->buf = NULL;
 	f->len = 0;
@@ -41,6 +57,7 @@ bool f_Stack_pop(f_Stack *f, f_Item *dest) {
 	if (f->len == 0) return false;
 	*dest = f->buf[f->len - 1];
 	f->len--;
+	return true;
 	/* TODO: decide when to realloc */
 }
 
@@ -69,15 +86,24 @@ void f_State_evalString(f_State *s, const char *line, bool echo) {
 	if (echo) fprintf(stderr, "%s%s\n", PROMPT_STRING, line);
 	s->reader_str = line;
 	s->reader_idx = 0;
+
 	StringView w;
 	while ((w = f_State_getToken(s)).ptr != NULL) {
-		/* fprintf(stderr, "got token (len %ld): %.*s\n", w.len, w.len, w.ptr); */
 		Dict_Entry *e = Dict_findN(&s->words, w);
-		if (e == NULL) {
-			fprintf(stderr, "%.*s? ", w.len, w.ptr);
+		if (e != NULL) {
+			f_Word *w = e->value;
+			if (!w->func(s)) break;
 			continue;
 		}
-		((f_Word *) e->value)->func(s);
+
+		f_Item it;
+		if (f_tryParseItem(w, &it)) {
+			f_Stack_push(&s->working_stack, it);
+			continue;
+		}
+
+		fprintf(stderr, "%.*s? ", w.len, w.ptr);
+		break;
 	}
 	fprintf(stderr, "\n");
 }
