@@ -68,6 +68,7 @@ bool f_State_init(f_State *dest) {
 	dest->is_closed = false;
 	dest->reader_str = NULL;
 	dest->reader_idx = 0;
+	dest->prompt_string = "$ ";
 
 	return true;
 }
@@ -83,7 +84,7 @@ void f_State_defineWord(f_State *s, const char *wordname, f_WordFunc func, bool 
 }
 
 void f_State_evalString(f_State *s, const char *line, bool echo) {
-	if (echo) fprintf(stderr, "%s%s\n", PROMPT_STRING, line);
+	if (echo) fprintf(stderr, "%s%s\n", s->prompt_string, line);
 	s->reader_str = line;
 	s->reader_idx = 0;
 
@@ -102,7 +103,7 @@ void f_State_evalString(f_State *s, const char *line, bool echo) {
 			continue;
 		}
 
-		fprintf(stderr, "%.*s? ", w.len, w.ptr);
+		fprintf(stderr, "%.*s? ", (int)w.len, w.ptr);
 		break;
 	}
 	fprintf(stderr, "\n");

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 bool stringEqN0(StringView s1, const char *s2);
+bool stringEq00(const char *s1, const char *s2);
 char *strDup(const char *str);
 
 bool Dict_init(Dict *dict, size_t hash_len) {
@@ -25,7 +26,7 @@ bool Dict_init(Dict *dict, size_t hash_len) {
 Dict_Entry *Dict_find(Dict *dict, const char *query) {
 	Dict_Entry *ep = dict->buf[Dict_hash(dict, query)];
 	for (; ep != NULL; ep = ep->next)
-		if (strcmp(query, ep->key) == 0) return ep;
+		if (stringEq00(query, ep->key) == 0) return ep;
 	return NULL;
 }
 
@@ -100,6 +101,15 @@ bool stringEqN0(StringView s1, const char *s2) {
 		if (i >= s1.len && s2[i] == '\0') return true; /* both ended */
 		if (i >= s1.len || s2[i] == '\0') return false; /* only one ended */
 		if (s1.ptr[i] != s2[i]) return false; /* different chars */
+		i++;
+	}
+}
+
+bool stringEq00(const char *s1, const char *s2) {
+	size_t i = 0;
+	while (true) {
+		if (s1[i] != s2[i]) return false;
+		if (s1[i] == '\0') return true;
 		i++;
 	}
 }

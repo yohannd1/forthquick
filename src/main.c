@@ -5,7 +5,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* TODO: use GNU readline if available */
+#ifdef HAS_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
+#define logD(msg) /* TODO */
+#define logW(msg) /* TODO */
+#define logE(msg) /* TODO */
+
+char *promptReadLine(f_State *s);
 
 #define die(msg)                                     \
 	{                                            \
@@ -37,30 +46,66 @@ int main(void) {
 	f_State_evalString(&s, "\\ Type 'words' to list words.", true);
 	f_State_evalString(&s, "", true);
 
-	/* TODO: deinit */
-
 	size_t linelen = 128;
 	char *linebuf = malloc(linelen);
 	if (linebuf == NULL) printf("OOM\n");
 	while (!s.is_closed) {
-		fprintf(stderr, "%s", PROMPT_STRING);
-
-		/* FIXME: this will split up around the 127th char so bruh */
-		size_t i;
-		for (i = 0; i < linelen - 1; i++) {
-			int c = fgetc(stdin);
-			if (c == '\n') break;
-			if (c == EOF) {
-				s.is_closed = true;
-				break;
-			}
-			linebuf[i] = (char) c;
+		char *line = promptReadLine(&s);
+		if (line == NULL) {
+			s.is_closed = true;
+			goto read_end;
 		}
-		linebuf[i] = '\0';
-		f_State_evalString(&s, linebuf, false);
+
+		f_State_evalString(&s, line, false);
+read_end:
+		free(line);
 	}
 
+	/* TODO: deinit */
+
 	return 0;
+}
+
+char *promptReadLine(f_State *s) {
+#ifdef HAS_READLINE
+	char *mem = readline(s->prompt_string);
+	if (mem == NULL) return NULL;
+	add_history(mem);
+#else
+	fprintf(stderr, "%s", s->prompt_string);
+
+	const size_t coarse_amount = 128;
+	size_t bufsize = coarse_amount;
+	char *mem = malloc(bufsize);
+	if (mem == NULL) {
+		logE("OOM");
+		return NULL;
+	}
+
+	size_t i = 0;
+	for (;; i++) {
+		if (i >= bufsize) {
+			bufsize += coarse_amount;
+			char *new = realloc(mem, bufsize);
+			if (new == NULL) {
+				logE("OOM");
+				free(mem);
+				return NULL;
+			}
+		}
+
+		int c = fgetc(stdin);
+		if (c == '\n') break;
+		if (c == EOF) {
+			free(mem);
+			return NULL;
+		}
+		mem[i] = (char) c;
+	}
+	mem[i] = '\0';
+#endif
+
+	return mem;
 }
 
 #define LOG(msg) \
@@ -111,7 +156,7 @@ DEFWORD(fw_div, {
 
 DEFWORD(fw_printInt, {
 	TRY_POP(n);
-	fprintf(stderr, "%d", n);
+	fprintf(stderr, "%ld", n);
 	return true;
 })
 
@@ -121,11 +166,13 @@ bool fw_words(f_State *s) {
 	while ((e = Dict_iterNext(&it)) != NULL) {
 		fprintf(stderr, "%s ", e->key);
 	}
+	return true;
 }
 
 bool fw_show(f_State *s) {
 	size_t i = 0;
 	for (; i < s->working_stack.len; i++) {
-		fprintf(stderr, "%d ", s->working_stack.buf[i]);
+		fprintf(stderr, "%ld ", s->working_stack.buf[i]);
 	}
+	return true;
 }

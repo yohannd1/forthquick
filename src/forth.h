@@ -26,6 +26,7 @@ typedef struct f_State {
 	bool is_closed;
 	const char *reader_str;
 	size_t reader_idx;
+	const char *prompt_string;
 } f_State;
 
 typedef bool (*f_WordFunc)(f_State *);
@@ -38,7 +39,5 @@ bool f_State_init(f_State *dest);
 void f_State_defineWord(f_State *s, const char *wordname, f_WordFunc func, bool is_immediate);
 void f_State_evalString(f_State *s, const char *line, bool echo);
 StringView f_State_getToken(f_State *s);
-
-#define PROMPT_STRING "$ "
 
 #endif
