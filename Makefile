@@ -2,7 +2,7 @@ BUILD := build
 PROG := $(BUILD)/quickforth
 SRC := $(wildcard src/*.c)
 
-CFLAGS := -std=c89 -Wall
+CFLAGS := -std=c89 -Wall -O3
 CC := gcc
 
 LIB_READLINE := $(shell pkg-config --libs readline 2>/dev/null)

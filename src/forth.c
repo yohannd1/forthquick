@@ -1,7 +1,7 @@
 #include "forth.h"
 #include "string.h"
 
-#include <stdio.h> /* FIXME: only for debug */
+#include "log.h"
 #include <stdlib.h>
 
 #define max(a, b) ((a > b) ? a : b)

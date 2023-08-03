@@ -1,26 +1,17 @@
 #include "dict.h"
 #include "forth.h"
+#include "log.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #ifdef HAS_READLINE
-#include <readline/readline.h>
-#include <readline/history.h>
+	#include <readline/history.h>
+	#include <readline/readline.h>
 #endif
 
-#define logD(msg) /* TODO */
-#define logW(msg) /* TODO */
-#define logE(msg) /* TODO */
-
 char *promptReadLine(f_State *s);
-
-#define die(msg)                                     \
-	{                                            \
-		fprintf(stderr, "error: %s\n", msg); \
-		exit(1);                             \
-	}
 
 bool fw_add(f_State *s);
 bool fw_sub(f_State *s);
@@ -57,7 +48,7 @@ int main(void) {
 		}
 
 		f_State_evalString(&s, line, false);
-read_end:
+	read_end:
 		free(line);
 	}
 
