@@ -3,7 +3,7 @@
 
 /* adapted from https://stackoverflow.com/a/4384446 */
 
-#include "string.h"
+#include "ArrayList.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -29,10 +29,10 @@ typedef size_t Dict_Hash;
 
 bool Dict_init(Dict *dict, size_t hash_len);
 Dict_Entry *Dict_find(Dict *dict, const char *query);
-Dict_Entry *Dict_findN(Dict *dict, StringView query);
+Dict_Entry *Dict_findN(Dict *dict, SliceConst query);
 Dict_Entry *Dict_put(Dict *dict, const char *key, void *value);
 Dict_Hash Dict_hash(Dict *dict, const char *str);
-Dict_Hash Dict_hashN(Dict *dict, StringView str);
+Dict_Hash Dict_hashN(Dict *dict, SliceConst str);
 
 Dict_Iterator Dict_iter(Dict *dict);
 Dict_Entry *Dict_iterNext(Dict_Iterator *iter);

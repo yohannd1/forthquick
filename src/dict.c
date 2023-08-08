@@ -1,11 +1,11 @@
 #include "dict.h"
-#include "string.h"
+#include "ArrayList.h"
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 
-bool stringEqN0(StringView s1, const char *s2);
+bool stringEqN0(SliceConst s1, const char *s2);
 bool stringEq00(const char *s1, const char *s2);
 char *strDup(const char *str);
 
@@ -30,7 +30,7 @@ Dict_Entry *Dict_find(Dict *dict, const char *query) {
 	return NULL;
 }
 
-Dict_Entry *Dict_findN(Dict *dict, StringView query) {
+Dict_Entry *Dict_findN(Dict *dict, SliceConst query) {
 	Dict_Entry *ep = dict->buf[Dict_hashN(dict, query)];
 	for (; ep != NULL; ep = ep->next)
 		if (stringEqN0(query, ep->key)) return ep;
@@ -64,7 +64,7 @@ Dict_Hash Dict_hash(Dict *dict, const char *str) {
 	return h % dict->hash_len;
 }
 
-Dict_Hash Dict_hashN(Dict *dict, StringView str) {
+Dict_Hash Dict_hashN(Dict *dict, SliceConst str) {
 	size_t i = 0;
 	size_t h = 0;
 	for (; i < str.len; i++)
@@ -95,7 +95,7 @@ Dict_Entry *Dict_iterNext(Dict_Iterator *it) {
 	}
 }
 
-bool stringEqN0(StringView s1, const char *s2) {
+bool stringEqN0(SliceConst s1, const char *s2) {
 	size_t i = 0;
 	while (true) {
 		if (i >= s1.len && s2[i] == '\0') return true; /* both ended */

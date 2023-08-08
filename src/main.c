@@ -33,26 +33,28 @@ int main(void) {
 	f_State_defineWord(&s, "words", fw_words, false);
 	f_State_defineWord(&s, "show", fw_show, false);
 
-	f_State_evalString(&s, "\\ Welcome to QuickForth v0.3.", true);
-	f_State_evalString(&s, "\\ Type 'words' to list words.", true);
-	f_State_evalString(&s, "", true);
+	s.echo = true;
+	f_State_compileAndRun(&s, SLICE_FROMNUL("\\ Welcome to QuickForth v0.3."));
+	f_State_compileAndRun(&s, SLICE_FROMNUL("\\ Type 'words' to list words."));
+	s.echo = false;
 
 	size_t linelen = 128;
 	char *linebuf = malloc(linelen);
 	if (linebuf == NULL) printf("OOM\n");
 	while (!s.is_closed) {
+		fprintf(stderr, "\n");
 		char *line = promptReadLine(&s);
 		if (line == NULL) {
 			s.is_closed = true;
 			goto read_end;
 		}
 
-		f_State_evalString(&s, line, false);
+		f_State_compileAndRun(&s, SLICE_FROMNUL(line));
 	read_end:
 		free(line);
 	}
 
-	/* TODO: deinit */
+	/* f_State_deinit(&s); */
 
 	return 0;
 }
@@ -103,7 +105,7 @@ char *promptReadLine(f_State *s) {
 	{ fprintf(stderr, "%s", msg); }
 
 #define TRY_POP(var)                                 \
-	f_Item var;                                  \
+	f_Int var;                                  \
 	if (!f_Stack_pop(&s->working_stack, &var)) { \
 		LOG("stack underflow");              \
 		return false;                        \
@@ -147,7 +149,7 @@ DEFWORD(fw_div, {
 
 DEFWORD(fw_printInt, {
 	TRY_POP(n);
-	fprintf(stderr, "%ld", n);
+	fprintf(stderr, "%d", n);
 	return true;
 })
 
@@ -163,7 +165,7 @@ bool fw_words(f_State *s) {
 bool fw_show(f_State *s) {
 	size_t i = 0;
 	for (; i < s->working_stack.len; i++) {
-		fprintf(stderr, "%ld ", s->working_stack.buf[i]);
+		fprintf(stderr, "%d ", s->working_stack.buf[i]);
 	}
 	return true;
 }
