@@ -6,6 +6,8 @@
 
 #define max(a, b) ((a > b) ? a : b)
 
+static bool f_State_evalWord(f_State *s, const f_Word *w);
+
 static bool f_Stack_alloc(f_Stack *f) {
 	size_t newsize = sizeof(f_Int) * max(f->len, f->capacity);
 
@@ -75,13 +77,15 @@ bool f_State_init(f_State *dest) {
 }
 
 void f_State_defineWord(f_State *s, const char *wordname, f_WordFunc func, bool is_immediate) {
+	f_Word w;
+	w.is_immediate = is_immediate;
+	w.tag = F_WORDT_FUNC;
+	w.un.func_ptr = func;
+
 	f_Word *mem = malloc(sizeof(f_Word));
-	if (mem == NULL) {
-		fprintf(stderr, "OOM\n");
-		exit(1);
-	}
-	*mem = (f_Word) { .func = func, .is_immediate = is_immediate };
-	Dict_put(&s->words, wordname, mem);
+	if (mem == NULL) die("OOM");
+	*mem = w;
+	Dict_put(&s->words, SLICE_FROMNUL(wordname), mem);
 }
 
 void f_State_compileAndRun(f_State *s, SliceConst line) {
@@ -100,44 +104,7 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest) {
 
 	SliceConst w;
 	while ((w = f_State_getToken(s)).ptr != NULL) {
-		Dict_Entry *e = Dict_findN(&s->words, w);
-		if (e != NULL) {
-			/* process word */
-			f_Word *w = e->value;
-
-			/* TODO: if immediate, run immediately duh */
-
-			ArrayList_push(&b, F_INS_CALLWORD);
-
-			/* decode pointer into an array */
-			size_t ptr_int = (size_t) w->func;
-			/* logD("ENCODING PTR %ld", ptr_int); */
-			size_t i;
-			for (i = sizeof(size_t); i > 0; i--) {
-				ArrayList_push(&b, (size_t) (ptr_int >> (i * 8 - 8)));
-			}
-
-			continue;
-		}
-
-		f_Int it;
-		if (f_tryParseInt(w, &it)) {
-			/* process int */
-			/* TODO: error handling? */
-			ArrayList_push(&b, F_INS_PUSHINT);
-
-			/* logD("ENCODING INT %d", it); */
-			size_t i;
-			for (i = sizeof(f_Int); i > 0; i--) {
-				uint8_t val = it >> (i * 8 - 8);
-				/* logD("-> %d", val); */
-				ArrayList_push(&b, val);
-			}
-			continue;
-		}
-
-		fprintf(stderr, "%.*s? ", (int) w.len, w.ptr);
-		goto error;
+		if (!f_State_compileSingleWord(s, &b, w)) goto error;
 	}
 
 	*dest = b.items;
@@ -145,6 +112,50 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest) {
 
 error:
 	ArrayList_deinit(&b);
+	return false;
+}
+
+bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
+	Dict_Entry *e = Dict_findN(&s->words, w);
+	if (e != NULL) {
+		/* process word */
+		f_Word *w = e->value;
+
+		if (w->is_immediate) {
+			return f_State_evalWord(s, w);
+		}
+
+		ArrayList_push(b, F_INS_CALLWORD);
+
+		/* decode pointer into an array */
+		size_t ptr_int = (size_t) w;
+		/* logD("ENCODING PTR %ld", ptr_int); */
+		size_t i;
+		for (i = sizeof(size_t); i > 0; i--) {
+			ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8)));
+		}
+
+		return true;
+	}
+
+	f_Int it;
+	if (f_tryParseInt(w, &it)) {
+		/* process int */
+		/* TODO: error handling? */
+		ArrayList_push(b, F_INS_PUSHINT);
+
+		/* logD("ENCODING INT %d", it); */
+		size_t i;
+		for (i = sizeof(f_Int); i > 0; i--) {
+			uint8_t val = it >> (i * 8 - 8);
+			/* logD("-> %d", val); */
+			ArrayList_push(b, val);
+		}
+
+		return true;
+	}
+
+	fprintf(stderr, "%.*s? ", (int) w.len, w.ptr);
 	return false;
 }
 
@@ -189,12 +200,22 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			}
 
 			/* logD("DECODED PTR %d", it); */
-			f_WordFunc f = (f_WordFunc) it;
-			if (!f(s)) return false;
+			f_Word *w = (f_Word *) it;
+			if (!f_State_evalWord(s, w)) return false;
 		}
 		}
 	}
 	return true;
+}
+
+static bool f_State_evalWord(f_State *s, const f_Word *w) {
+	if (w->tag == F_WORDT_FUNC) return w->un.func_ptr(s);
+
+	if (w->tag == F_WORDT_BYTECODE)
+		return f_State_run(s, SLICE_MUT2CONST(w->un.bytecode.items));
+
+	logD("unknown WORDT tag #%02x", w->tag);
+	return false;
 }
 
 static bool isWhitespace(char c) {

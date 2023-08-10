@@ -8,6 +8,7 @@
 bool stringEqN0(SliceConst s1, const char *s2);
 bool stringEq00(const char *s1, const char *s2);
 char *strDup(const char *str);
+char *strDupN(SliceConst str);
 
 bool Dict_init(Dict *dict, size_t hash_len) {
 	Dict_Entry **buf = malloc(sizeof(Dict_Entry *) * hash_len);
@@ -37,20 +38,20 @@ Dict_Entry *Dict_findN(Dict *dict, SliceConst query) {
 	return NULL;
 }
 
-Dict_Entry *Dict_put(Dict *dict, const char *key, void *val) {
-	Dict_Entry *ep = Dict_find(dict, key);
+Dict_Entry *Dict_put(Dict *dict, SliceConst key, void *val) {
+	Dict_Entry *ep = Dict_findN(dict, key);
 	if (ep == NULL) {
 		ep = malloc(sizeof(*ep));
 		if (ep == NULL) return NULL;
 
-		ep->key = strDup(key);
+		ep->key = strDupN(key);
 		if (ep->key == NULL) return NULL;
 
-		size_t hashval = Dict_hash(dict, key);
+		size_t hashval = Dict_hashN(dict, key);
 		ep->next = dict->buf[hashval];
 		dict->buf[hashval] = ep;
 	} else {
-		free(ep->value); /* free previous entry */
+		/* free(ep->value); /1* free previous entry *1/ */
 	}
 
 	ep->value = val;
@@ -124,5 +125,15 @@ char *strDup(const char *str) {
 	size_t i = 0;
 	for (; i < len + 1; i++)
 		p[i] = str[i];
+	return p;
+}
+
+char *strDupN(SliceConst str) {
+	char *p = malloc(str.len + 1); /* +1 for ’\0’ */
+	if (p == NULL) return NULL;
+	size_t i = 0;
+	for (; i < str.len; i++)
+		p[i] = str.ptr[i];
+	p[str.len] = '\0';
 	return p;
 }

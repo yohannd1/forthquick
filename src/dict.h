@@ -30,7 +30,7 @@ typedef size_t Dict_Hash;
 bool Dict_init(Dict *dict, size_t hash_len);
 Dict_Entry *Dict_find(Dict *dict, const char *query);
 Dict_Entry *Dict_findN(Dict *dict, SliceConst query);
-Dict_Entry *Dict_put(Dict *dict, const char *key, void *value);
+Dict_Entry *Dict_put(Dict *dict, SliceConst key, void *val);
 Dict_Hash Dict_hash(Dict *dict, const char *str);
 Dict_Hash Dict_hashN(Dict *dict, SliceConst str);
 

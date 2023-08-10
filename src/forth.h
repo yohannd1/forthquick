@@ -32,9 +32,18 @@ typedef struct f_State {
 
 typedef bool (*f_WordFunc)(f_State *);
 typedef struct f_Word {
-	f_WordFunc func;
+	uint8_t tag;
 	bool is_immediate;
+	union {
+		ArrayList bytecode;
+		f_WordFunc func_ptr;
+	} un;
 } f_Word;
+
+typedef enum f_WordType {
+	F_WORDT_FUNC = 0,
+	F_WORDT_BYTECODE,
+} f_WordType;
 
 bool f_State_init(f_State *dest);
 /* TODO: void f_State_deinit(f_State *s); */
@@ -52,6 +61,7 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest);
 bool f_State_run(f_State *s, SliceConst bytecode);
 void f_State_compileAndRun(f_State *s, SliceConst line);
 SliceConst f_State_getToken(f_State *s);
+bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word);
 
 typedef enum f_Instruction {
 	F_INS_PUSHINT = 0,
