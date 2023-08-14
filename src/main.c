@@ -24,6 +24,8 @@ bool fw_quit(f_State *s);
 bool fw_beginWordCompile(f_State *s);
 bool fw_beginComment(f_State *s);
 bool fw_beginComment2(f_State *s);
+bool fw_toVar(f_State *s);
+bool fw_fromVar(f_State *s);
 
 int main(void) {
 	f_State s;
@@ -40,6 +42,8 @@ int main(void) {
 	f_State_defineWord(&s, ":", fw_beginWordCompile, true);
 	f_State_defineWord(&s, "(", fw_beginComment, true);
 	f_State_defineWord(&s, "((", fw_beginComment2, true);
+	f_State_defineWord(&s, ">v", fw_toVar, true);
+	f_State_defineWord(&s, "<v", fw_fromVar, true);
 
 	s.echo = true;
 	f_State_compileAndRun(&s, SLICE_FROMNUL("( Welcome to QuickForth v0.3. )"));
@@ -240,4 +244,61 @@ bool fw_beginComment2(f_State *s) {
 
 	logD("missing ))");
 	return false;
+}
+
+bool fw_toVar(f_State *s) {
+	SliceConst w = f_State_getToken(s);
+	if (w.ptr == NULL) {
+		logD("MissingToken(VarName)");
+		return false;
+	}
+
+	void *ptr;
+	Dict_Entry *en = Dict_findN(&s->variables, w);
+	if (en == NULL) {
+		ptr = malloc(sizeof(f_Int));
+		if (ptr == NULL) {
+			logD("OOM");
+			return false;
+		}
+		Dict_put(&s->variables, w, ptr);
+	} else {
+		ptr = en->value;
+	}
+
+	size_t ptr_int = (size_t)ptr;
+
+	ArrayList *b = s->bytecode;
+	ArrayList_push(b, F_INS_PWRITE);
+	size_t i;
+	for (i = sizeof(size_t); i > 0; i--) {
+		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8)));
+	}
+
+	return true;
+}
+
+bool fw_fromVar(f_State *s) {
+	SliceConst w = f_State_getToken(s);
+	if (w.ptr == NULL) {
+		logD("MissingToken(VarName)");
+		return false;
+	}
+
+	Dict_Entry *d = Dict_findN(&s->variables, w);
+	if (d == NULL) {
+		logD("UnknownVar(%.*s)", w.len, w.ptr);
+		return false;
+	}
+
+	size_t ptr_int = (size_t)d->value;
+
+	ArrayList *b = s->bytecode;
+	ArrayList_push(b, F_INS_PREAD);
+	size_t i;
+	for (i = sizeof(size_t); i > 0; i--) {
+		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8)));
+	}
+
+	return true;
 }

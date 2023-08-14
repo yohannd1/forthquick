@@ -21,6 +21,8 @@ bool f_Stack_pop(f_Stack *f, f_Int *dest);
 
 typedef struct f_State {
 	Dict words;
+	Dict variables;
+	ArrayList *bytecode;
 	f_Stack working_stack;
 	f_Stack return_stack;
 	bool is_closed;
@@ -66,6 +68,8 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word);
 typedef enum f_Instruction {
 	F_INS_PUSHINT = 0,
 	F_INS_CALLWORD,
+	F_INS_PWRITE,
+	F_INS_PREAD,
 } f_Instruction;
 
 #endif

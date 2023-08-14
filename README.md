@@ -8,4 +8,5 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] port to c89
 - [x] create words with `:`
 - [x] comments with `(` and `((`
-- TODO: what more do i do? how do i approach vars and if statements
+* [ ] fix bug: anything after >v VARNAME is ignored??
+- [ ] what more do i do? how do i approach if statements

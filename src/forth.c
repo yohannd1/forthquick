@@ -67,6 +67,8 @@ bool f_State_init(f_State *dest) {
 	if (!f_Stack_init(&dest->working_stack)) return false;
 	if (!f_Stack_init(&dest->return_stack)) return false;
 	if (!Dict_init(&dest->words, 128)) return false;
+	if (!Dict_init(&dest->variables, 128)) return false;
+	dest->bytecode = NULL;
 	dest->is_closed = false;
 	dest->reader_str = (SliceConst) { .ptr = NULL, .len = 0 };
 	dest->reader_idx = 0;
@@ -101,16 +103,19 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest) {
 	s->reader_idx = 0;
 
 	ArrayList b = ArrayList_init();
+	s->bytecode = &b;
 
 	SliceConst w;
 	while ((w = f_State_getToken(s)).ptr != NULL) {
 		if (!f_State_compileSingleWord(s, &b, w)) goto error;
 	}
 
+	s->bytecode = NULL;
 	*dest = b.items;
 	return true;
 
 error:
+	s->bytecode = NULL;
 	ArrayList_deinit(&b);
 	return false;
 }
@@ -202,6 +207,51 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			/* logD("DECODED PTR %d", it); */
 			f_Word *w = (f_Word *) it;
 			if (!f_State_evalWord(s, w)) return false;
+		}
+		case F_INS_PREAD: {
+			size_t it = 0;
+
+			/* logD("DECODING PTR..."); */
+			size_t j;
+			for (j = sizeof(size_t); j > 0; j--) {
+				if (i >= bytecode.len) {
+					/* logD("bytecode abruptly ended"); */
+					return false;
+				}
+
+				uint8_t byte = bytecode.ptr[++i];
+				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				it += (size_t) byte << (j * 8 - 8);
+			}
+
+			/* logD("DECODED PTR %d", it); */
+			return f_Stack_push(&s->working_stack, *(f_Int*)it);
+		}
+		case F_INS_PWRITE: {
+			size_t it = 0;
+
+			/* logD("DECODING PTR..."); */
+			size_t j;
+			for (j = sizeof(size_t); j > 0; j--) {
+				if (i >= bytecode.len) {
+					/* logD("bytecode abruptly ended"); */
+					return false;
+				}
+
+				uint8_t byte = bytecode.ptr[++i];
+				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				it += (size_t) byte << (j * 8 - 8);
+			}
+			/* logD("DECODED PTR %d", it); */
+
+			f_Int n;
+			if (!f_Stack_pop(&s->working_stack, &n)) {
+				logD("StackUnderflow");
+				return false;
+			}
+
+			f_Int *ptr = (f_Int *) it;
+			*ptr = n;
 		}
 		}
 	}
