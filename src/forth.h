@@ -70,6 +70,7 @@ typedef enum f_Instruction {
 	F_INS_CALLWORD,
 	F_INS_PWRITE,
 	F_INS_PREAD,
+	F_INS_JMPCOND,
 } f_Instruction;
 
 #endif

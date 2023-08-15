@@ -26,6 +26,7 @@ bool fw_beginComment(f_State *s);
 bool fw_beginComment2(f_State *s);
 bool fw_toVar(f_State *s);
 bool fw_fromVar(f_State *s);
+bool fw_beginIf(f_State *s);
 
 int main(void) {
 	f_State s;
@@ -44,6 +45,7 @@ int main(void) {
 	f_State_defineWord(&s, "((", fw_beginComment2, true);
 	f_State_defineWord(&s, ">v", fw_toVar, true);
 	f_State_defineWord(&s, "<v", fw_fromVar, true);
+	f_State_defineWord(&s, "if(", fw_beginIf, true);
 
 	s.echo = true;
 	f_State_compileAndRun(&s, SLICE_FROMNUL("( Welcome to QuickForth v0.3. )"));
@@ -301,4 +303,33 @@ bool fw_fromVar(f_State *s) {
 	}
 
 	return true;
+}
+
+bool fw_beginIf(f_State *s) {
+	ArrayList ift = ArrayList_init();
+
+	SliceConst w;
+	while ((w = f_State_getToken(s)).ptr != NULL) {
+		if (w.len == 1 && w.ptr[0] == ')') {
+			ArrayList *b = s->bytecode;
+			ArrayList_push(b, F_INS_JMPCOND);
+			size_t len_int = b->items.len;
+			size_t i;
+			for (i = sizeof(size_t); i > 0; i--) {
+				ArrayList_push(b, (size_t) (len_int >> (i * 8 - 8)));
+			}
+			for (i = 0; i < ift.items.len; i++) {
+				ArrayList_push(b, ift.items.ptr[i]);
+			}
+
+			ArrayList_deinit(&ift);
+			return true;
+		}
+
+		f_State_compileSingleWord(s, &ift, w);
+	}
+
+	logD("MissingToken(\")\")");
+	ArrayList_deinit(&ift);
+	return false;
 }

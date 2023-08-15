@@ -207,6 +207,7 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			/* logD("DECODED PTR %d", it); */
 			f_Word *w = (f_Word *) it;
 			if (!f_State_evalWord(s, w)) return false;
+			break;
 		}
 		case F_INS_PREAD: {
 			size_t it = 0;
@@ -252,6 +253,33 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 
 			f_Int *ptr = (f_Int *) it;
 			*ptr = n;
+			break;
+		}
+		case F_INS_JMPCOND: {
+			size_t it = 0;
+
+			/* logD("DECODING LEN..."); */
+			size_t j;
+			for (j = sizeof(size_t); j > 0; j--) {
+				if (i >= bytecode.len) {
+					/* logD("bytecode abruptly ended"); */
+					return false;
+				}
+
+				uint8_t byte = bytecode.ptr[++i];
+				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				it += (size_t) byte << (j * 8 - 8);
+			}
+			/* logD("DECODED LEN %d", it); */
+
+			f_Int n;
+			if (!f_Stack_pop(&s->working_stack, &n)) {
+				logD("StackUnderflow");
+				return false;
+			}
+
+			if (n == 0) i += it;
+			break;
 		}
 		}
 	}
