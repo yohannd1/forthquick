@@ -9,7 +9,12 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] create words with `:`
 - [x] comments with `(` and `((`
 - [x] `if(` statement
+- [x] simplify variables (they become simply words that return adresses)
+- [ ] custom width variables?
 - [ ] `)else(` on if statement
 - [ ] fix bug: anything after >v VARNAME is ignored??
 - [ ] what more do i do? how do i approach if statements
 - [ ] C integration?? :))
+- [ ] lambdas (anonymous words)
+- [ ] structs/tables/whatever (how would that work)
+- [ ] fibers? (how would that work? interpret code from each fiber alternatively?)

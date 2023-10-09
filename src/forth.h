@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef int32_t f_Int;
+typedef size_t f_Int;
 
 typedef struct f_Stack {
 	f_Int *buf;
@@ -66,8 +66,8 @@ SliceConst f_State_getToken(f_State *s);
 bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word);
 
 typedef enum f_Instruction {
-	F_INS_PUSHINT = 0,
-	F_INS_CALLWORD,
+	F_INS_PUSHINT = 0, /* push an int to the stack */
+	F_INS_CALLWORD, /* call a word */
 	F_INS_PWRITE,
 	F_INS_PREAD,
 	F_INS_JMPCOND,

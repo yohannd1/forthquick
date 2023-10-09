@@ -129,7 +129,6 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 		if (w->is_immediate) {
 			return f_State_evalWord(s, w);
 		}
-
 		ArrayList_push(b, F_INS_CALLWORD);
 
 		/* decode pointer into an array */

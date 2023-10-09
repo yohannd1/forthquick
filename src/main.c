@@ -24,8 +24,11 @@ bool fw_quit(f_State *s);
 bool fw_beginWordCompile(f_State *s);
 bool fw_beginComment(f_State *s);
 bool fw_beginComment2(f_State *s);
-bool fw_toVar(f_State *s);
-bool fw_fromVar(f_State *s);
+bool fw_fetch(f_State *s);
+bool fw_store(f_State *s);
+bool fw_defVar(f_State *s);
+/* bool fw_toVar(f_State *s); */
+/* bool fw_fromVar(f_State *s); */
 bool fw_beginIf(f_State *s);
 
 int main(void) {
@@ -43,9 +46,10 @@ int main(void) {
 	f_State_defineWord(&s, ":", fw_beginWordCompile, true);
 	f_State_defineWord(&s, "(", fw_beginComment, true);
 	f_State_defineWord(&s, "((", fw_beginComment2, true);
-	f_State_defineWord(&s, ">v", fw_toVar, true);
-	f_State_defineWord(&s, "<v", fw_fromVar, true);
+	f_State_defineWord(&s, "defvar", fw_defVar, true);
 	f_State_defineWord(&s, "if(", fw_beginIf, true);
+	f_State_defineWord(&s, "@", fw_fetch, false);
+	f_State_defineWord(&s, "!", fw_store, false);
 
 	s.echo = true;
 	f_State_compileAndRun(&s, SLICE_FROMNUL("( Welcome to QuickForth v0.3. )"));
@@ -163,7 +167,20 @@ DEFWORD(fw_div, {
 
 DEFWORD(fw_printInt, {
 	TRY_POP(n);
-	fprintf(stderr, "%d ", n);
+	fprintf(stderr, "%lu ", n);
+	return true;
+})
+
+DEFWORD(fw_fetch, {
+	TRY_POP(addr);
+	TRY_PUSH(*(f_Int*)addr);
+	return true;
+})
+
+DEFWORD(fw_store, {
+	TRY_POP(addr);
+	TRY_POP(val);
+	*(f_Int*)addr = val;
 	return true;
 })
 
@@ -179,7 +196,7 @@ bool fw_words(f_State *s) {
 bool fw_show(f_State *s) {
 	size_t i = 0;
 	for (; i < s->working_stack.len; i++) {
-		fprintf(stderr, "%d ", s->working_stack.buf[i]);
+		fprintf(stderr, "%lu ", s->working_stack.buf[i]);
 	}
 	return true;
 }
@@ -192,9 +209,9 @@ bool fw_quit(f_State *s) {
 bool fw_beginWordCompile(f_State *s) {
 	ArrayList b = ArrayList_init();
 
-	SliceConst defword = f_State_getToken(s);
-	if (defword.ptr == NULL) {
-		logD("missing word to define");
+	SliceConst wordname = f_State_getToken(s);
+	if (wordname.ptr == NULL) {
+		logD("missing word name");
 		goto error;
 	}
 
@@ -210,14 +227,14 @@ bool fw_beginWordCompile(f_State *s) {
 			if (mem == NULL) die("OOM");
 			*mem = w;
 
-			Dict_put(&s->words, defword, (void*)mem);
+			Dict_put(&s->words, wordname, (void*)mem);
 			return true;
 		}
 
 		f_State_compileSingleWord(s, &b, w);
 	}
 
-	logD("missing ;");
+	logD("MissingToken(\";\")");
 
 error:
 	ArrayList_deinit(&b);
@@ -232,7 +249,7 @@ bool fw_beginComment(f_State *s) {
 		}
 	}
 
-	logD("missing )");
+	logD("MissingToken(\")\")");
 	return false;
 }
 
@@ -248,62 +265,96 @@ bool fw_beginComment2(f_State *s) {
 	return false;
 }
 
-bool fw_toVar(f_State *s) {
-	SliceConst w = f_State_getToken(s);
-	if (w.ptr == NULL) {
+bool fw_defVar(f_State *s) {
+	SliceConst name = f_State_getToken(s);
+	if (name.ptr == NULL) {
 		logD("MissingToken(VarName)");
 		return false;
 	}
 
-	void *ptr;
-	Dict_Entry *en = Dict_findN(&s->variables, w);
-	if (en == NULL) {
-		ptr = malloc(sizeof(f_Int));
-		if (ptr == NULL) {
-			logD("OOM");
-			return false;
-		}
-		Dict_put(&s->variables, w, ptr);
-	} else {
-		ptr = en->value;
-	}
-
-	size_t ptr_int = (size_t)ptr;
-
-	ArrayList *b = s->bytecode;
-	ArrayList_push(b, F_INS_PWRITE);
-	size_t i;
-	for (i = sizeof(size_t); i > 0; i--) {
-		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8)));
-	}
-
-	return true;
-}
-
-bool fw_fromVar(f_State *s) {
-	SliceConst w = f_State_getToken(s);
-	if (w.ptr == NULL) {
-		logD("MissingToken(VarName)");
+	f_Int *cell = malloc(sizeof(f_Int));
+	if (cell == NULL) {
+		logD("OOM");
 		return false;
 	}
 
-	Dict_Entry *d = Dict_findN(&s->variables, w);
-	if (d == NULL) {
-		logD("UnknownVar(%.*s)", w.len, w.ptr);
-		return false;
-	}
-
-	size_t ptr_int = (size_t)d->value;
-
-	ArrayList *b = s->bytecode;
-	ArrayList_push(b, F_INS_PREAD);
+	ArrayList b = ArrayList_init();
+	ArrayList_push(&b, F_INS_PUSHINT);
+	size_t ptr_int = (size_t)cell;
 	size_t i;
 	for (i = sizeof(size_t); i > 0; i--) {
-		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8)));
+		ArrayList_push(&b, (size_t) (ptr_int >> (i * 8 - 8)));
 	}
 
+	f_Word w;
+	w.tag = F_WORDT_BYTECODE;
+	w.is_immediate = false;
+	w.un.bytecode = b;
+
+	f_Word *mem = malloc(sizeof(f_Word));
+	if (mem == NULL) die("OOM");
+	*mem = w;
+
+	Dict_put(&s->words, name, (void*)mem);
 	return true;
 }
+
+/* bool fw_toVar(f_State *s) { */
+/* 	SliceConst w = f_State_getToken(s); */
+/* 	if (w.ptr == NULL) { */
+/* 		logD("MissingToken(VarName)"); */
+/* 		return false; */
+/* 	} */
+
+/* 	void *ptr; */
+/* 	Dict_Entry *en = Dict_findN(&s->variables, w); */
+/* 	if (en == NULL) { */
+/* 		ptr = malloc(sizeof(f_Int)); */
+/* 		if (ptr == NULL) { */
+/* 			logD("OOM"); */
+/* 			return false; */
+/* 		} */
+/* 		Dict_put(&s->variables, w, ptr); */
+/* 	} else { */
+/* 		ptr = en->value; */
+/* 	} */
+
+/* 	size_t ptr_int = (size_t)ptr; */
+
+/* 	ArrayList *b = s->bytecode; */
+/* 	ArrayList_push(b, F_INS_PWRITE); */
+/* 	size_t i; */
+/* 	for (i = sizeof(size_t); i > 0; i--) { */
+/* 		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8))); */
+/* 	} */
+
+/* 	return true; */
+/* } */
+
+/* bool fw_fromVar(f_State *s) { */
+/* 	SliceConst w = f_State_getToken(s); */
+/* 	if (w.ptr == NULL) { */
+/* 		logD("MissingToken(VarName)"); */
+/* 		return false; */
+/* 	} */
+
+/* 	Dict_Entry *d = Dict_findN(&s->variables, w); */
+/* 	if (d == NULL) { */
+/* 		logD("UnknownVar(%.*s)", w.len, w.ptr); */
+/* 		return false; */
+/* 	} */
+
+/* 	size_t ptr_int = (size_t)d->value; */
+
+/* 	ArrayList *b = s->bytecode; */
+/* 	ArrayList_push(b, F_INS_PREAD); */
+/* 	size_t i; */
+/* 	for (i = sizeof(size_t); i > 0; i--) { */
+/* 		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8))); */
+/* 	} */
+
+/* 	return true; */
+/* } */
 
 bool fw_beginIf(f_State *s) {
 	ArrayList ift = ArrayList_init();
