@@ -17,7 +17,14 @@ bool fw_add(f_State *s);
 bool fw_sub(f_State *s);
 bool fw_mul(f_State *s);
 bool fw_div(f_State *s);
-bool fw_printInt(f_State *s);
+bool fw_print(f_State *s);
+
+bool fw_fadd(f_State *s);
+bool fw_fsub(f_State *s);
+bool fw_fmul(f_State *s);
+bool fw_fdiv(f_State *s);
+bool fw_fprint(f_State *s);
+
 bool fw_words(f_State *s);
 bool fw_show(f_State *s);
 bool fw_quit(f_State *s);
@@ -35,21 +42,32 @@ int main(void) {
 	f_State s;
 	if (!f_State_init(&s)) die("failed to init state");
 
+        /* memory primitives */
+	f_State_defineWord(&s, "@", fw_fetch, false);
+	f_State_defineWord(&s, "!", fw_store, false);
+	f_State_defineWord(&s, "defvar", fw_defVar, true);
+
+        /* int stuff */
 	f_State_defineWord(&s, "+", fw_add, false);
 	f_State_defineWord(&s, "-", fw_sub, false);
 	f_State_defineWord(&s, "*", fw_mul, false);
 	f_State_defineWord(&s, "/", fw_div, false);
-	f_State_defineWord(&s, ".", fw_printInt, false);
+	f_State_defineWord(&s, ".", fw_print, false);
+
+        /* float stuff */
+	f_State_defineWord(&s, "f+", fw_fadd, false);
+	f_State_defineWord(&s, "f-", fw_fsub, false);
+	f_State_defineWord(&s, "f*", fw_fmul, false);
+	f_State_defineWord(&s, "f/", fw_fdiv, false);
+	f_State_defineWord(&s, "f.", fw_fprint, false);
+
 	f_State_defineWord(&s, "words", fw_words, false);
-	f_State_defineWord(&s, "show", fw_show, false);
+	f_State_defineWord(&s, ".s", fw_show, false);
 	f_State_defineWord(&s, "quit", fw_quit, false);
 	f_State_defineWord(&s, ":", fw_beginWordCompile, true);
 	f_State_defineWord(&s, "(", fw_beginComment, true);
 	f_State_defineWord(&s, "((", fw_beginComment2, true);
-	f_State_defineWord(&s, "defvar", fw_defVar, true);
 	f_State_defineWord(&s, "if(", fw_beginIf, true);
-	f_State_defineWord(&s, "@", fw_fetch, false);
-	f_State_defineWord(&s, "!", fw_store, false);
 
 	s.echo = true;
 	f_State_compileAndRun(&s, SLICE_FROMNUL("( Welcome to QuickForth v0.3. )"));
@@ -89,7 +107,7 @@ char *promptReadLine(f_State *s) {
 	size_t bufsize = coarse_amount;
 	char *mem = malloc(bufsize);
 	if (mem == NULL) {
-		logE("OOM");
+		logD("OOM");
 		return NULL;
 	}
 
@@ -99,7 +117,7 @@ char *promptReadLine(f_State *s) {
 			bufsize += coarse_amount;
 			char *new = realloc(mem, bufsize);
 			if (new == NULL) {
-				logE("OOM");
+				logD("OOM");
 				free(mem);
 				return NULL;
 			}
@@ -136,38 +154,33 @@ char *promptReadLine(f_State *s) {
 	}
 
 #define DEFWORD(name, statements) bool name(f_State *s) statements
+#define DEF_BIN_ARITH_WORD(name, op) \
+    DEFWORD(name, { \
+	TRY_POP(n2); \
+	TRY_POP(n1); \
+	TRY_PUSH(op); \
+	return true; \
+    })
 
-DEFWORD(fw_add, {
-	TRY_POP(n2);
-	TRY_POP(n1);
-	TRY_PUSH(n1 + n2);
-	return true;
-})
+DEF_BIN_ARITH_WORD(fw_add, n1 + n2);
+DEF_BIN_ARITH_WORD(fw_sub, n1 - n2);
+DEF_BIN_ARITH_WORD(fw_mul, n1 * n2);
+DEF_BIN_ARITH_WORD(fw_div, n1 / n2);
 
-DEFWORD(fw_sub, {
-	TRY_POP(n2);
-	TRY_POP(n1);
-	TRY_PUSH(n1 - n2);
-	return true;
-})
+DEF_BIN_ARITH_WORD(fw_fadd, f_floatToInt(f_intToFloat(n1) + f_intToFloat(n2)));
+DEF_BIN_ARITH_WORD(fw_fsub, f_floatToInt(f_intToFloat(n1) - f_intToFloat(n2)));
+DEF_BIN_ARITH_WORD(fw_fmul, f_floatToInt(f_intToFloat(n1) * f_intToFloat(n2)));
+DEF_BIN_ARITH_WORD(fw_fdiv, f_floatToInt(f_intToFloat(n1) / f_intToFloat(n2)));
 
-DEFWORD(fw_mul, {
-	TRY_POP(n2);
-	TRY_POP(n1);
-	TRY_PUSH(n1 * n2);
-	return true;
-})
-
-DEFWORD(fw_div, {
-	TRY_POP(n2);
-	TRY_POP(n1);
-	TRY_PUSH(n1 / n2);
-	return true;
-})
-
-DEFWORD(fw_printInt, {
+DEFWORD(fw_print, {
 	TRY_POP(n);
 	fprintf(stderr, "%lu ", n);
+	return true;
+})
+
+DEFWORD(fw_fprint, {
+	TRY_POP(n);
+	fprintf(stderr, "%f ", f_intToFloat(n));
 	return true;
 })
 

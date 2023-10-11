@@ -7,7 +7,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef size_t f_Int;
+typedef size_t f_Int; /* TODO: perhaps call this cell? since i'm even using this to represent floats... */
+/* FIXME: assert sizeof(f_Int) >= sizeof(float) */
 
 typedef struct f_Stack {
 	f_Int *buf;
@@ -18,6 +19,9 @@ typedef struct f_Stack {
 bool f_Stack_init(f_Stack *f);
 bool f_Stack_push(f_Stack *f, f_Int i);
 bool f_Stack_pop(f_Stack *f, f_Int *dest);
+
+float f_intToFloat(f_Int i);
+f_Int f_floatToInt(float f);
 
 typedef struct f_State {
 	Dict words;

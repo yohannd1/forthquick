@@ -35,6 +35,21 @@ static bool f_tryParseInt(SliceConst s, f_Int *it) {
 	return true;
 }
 
+static bool f_tryParseFloat(SliceConst s, f_Int *it) {
+    /* i feel so goddamn insane */
+    char *mem = malloc(s.len + 1);
+    if (!mem) die("OOM");
+    memcpy(mem, s.ptr, s.len);
+    mem[s.len] = '\0';
+
+    float f;
+    bool worked = sscanf(mem, "%f", &f) == 1;
+    if (worked) *it = f_floatToInt(f);
+
+    free(mem);
+    return worked;
+}
+
 bool f_Stack_init(f_Stack *f) {
 	f->buf = NULL;
 	f->len = 0;
@@ -142,17 +157,20 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 		return true;
 	}
 
+        bool int_ok = false;
+
+        /* try parsing int/float and push it into the stack */
 	f_Int it;
-	if (f_tryParseInt(w, &it)) {
-		/* process int */
+        int_ok = f_tryParseInt(w, &it);
+        if (!int_ok) int_ok = f_tryParseFloat(w, &it);
+
+	if (int_ok) {
 		/* TODO: error handling? */
 		ArrayList_push(b, F_INS_PUSHINT);
 
-		/* logD("ENCODING INT %d", it); */
 		size_t i;
 		for (i = sizeof(f_Int); i > 0; i--) {
 			uint8_t val = it >> (i * 8 - 8);
-			/* logD("-> %d", val); */
 			ArrayList_push(b, val);
 		}
 
@@ -321,4 +339,22 @@ SliceConst f_State_getToken(f_State *s) {
 
 	if (i > 0) return (SliceConst) { .ptr = ret_start, .len = i };
 	return (SliceConst) { .ptr = NULL, .len = 0 };
+}
+
+f_Int f_floatToInt(float f) {
+    union {
+	float f;
+	f_Int i;
+    } u;
+    u.f = f;
+    return u.i;
+}
+
+float f_intToFloat(f_Int i) {
+    union {
+	float f;
+	f_Int i;
+    } u;
+    u.i = i;
+    return u.f;
 }

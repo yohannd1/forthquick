@@ -10,6 +10,8 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] comments with `(` and `((`
 - [x] `if(` statement
 - [x] simplify variables (they become simply words that return adresses)
+- [x] floating point operations
+- [ ] turn on -Wpedantic and fix every issue that arises
 - [ ] custom width variables?
 - [ ] `)else(` on if statement
 - [ ] fix bug: anything after >v VARNAME is ignored??
