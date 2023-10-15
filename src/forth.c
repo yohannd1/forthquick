@@ -36,14 +36,17 @@ static bool f_tryParseInt(SliceConst s, f_Int *it) {
 }
 
 static bool f_tryParseFloat(SliceConst s, f_Int *it) {
+	char *mem;
+	bool worked;
+	float f;
+
 	/* i feel so goddamn insane */
-	char *mem = malloc(s.len + 1);
-	if (!mem) die("OOM");
+	mem = malloc(s.len + 1);
+	if (mem == 0) die("OOM");
 	memcpy(mem, s.ptr, s.len);
 	mem[s.len] = '\0';
 
-	float f;
-	bool worked = sscanf(mem, "%f", &f) == 1;
+	worked = sscanf(mem, "%f", &f) == 1;
 	if (worked) *it = f_floatToInt(f);
 
 	free(mem);
@@ -85,7 +88,8 @@ bool f_State_init(f_State *dest) {
 	if (!Dict_init(&dest->variables, 128)) return false;
 	dest->bytecode = NULL;
 	dest->is_closed = false;
-	dest->reader_str = (SliceConst) { .ptr = NULL, .len = 0 };
+	dest->reader_str.ptr = NULL;
+	dest->reader_str.len = 0;
 	dest->reader_idx = 0;
 	dest->prompt_string = "$ ";
 	dest->echo = false;
@@ -95,11 +99,13 @@ bool f_State_init(f_State *dest) {
 
 void f_State_defineWord(f_State *s, const char *wordname, f_WordFunc func, bool is_immediate) {
 	f_Word w;
+	f_Word *mem;
+
 	w.is_immediate = is_immediate;
 	w.tag = F_WORDT_FUNC;
 	w.un.func_ptr = func;
 
-	f_Word *mem = malloc(sizeof(f_Word));
+	mem = malloc(sizeof(f_Word));
 	if (mem == NULL) die("OOM");
 	*mem = w;
 	Dict_put(&s->words, SLICE_FROMNUL(wordname), mem);

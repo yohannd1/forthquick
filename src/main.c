@@ -220,23 +220,28 @@ bool fw_quit(f_State *s) {
 }
 
 bool fw_beginWordCompile(f_State *s) {
-	ArrayList b = ArrayList_init();
+	ArrayList b;
+	SliceConst wordname;
+	SliceConst w;
 
-	SliceConst wordname = f_State_getToken(s);
+	b = ArrayList_init();
+
+	wordname = f_State_getToken(s);
 	if (wordname.ptr == NULL) {
 		logD("missing word name");
 		goto error;
 	}
 
-	SliceConst w;
 	while ((w = f_State_getToken(s)).ptr != NULL) {
 		if (w.len == 1 && w.ptr[0] == ';') {
 			f_Word w;
+			f_Word *mem;
+
 			w.tag = F_WORDT_BYTECODE;
 			w.is_immediate = false;
 			w.un.bytecode = b;
 
-			f_Word *mem = malloc(sizeof(f_Word));
+			mem = malloc(sizeof(f_Word));
 			if (mem == NULL) die("OOM");
 			*mem = w;
 
@@ -279,32 +284,37 @@ bool fw_beginComment2(f_State *s) {
 }
 
 bool fw_defVar(f_State *s) {
-	SliceConst name = f_State_getToken(s);
-	if (name.ptr == NULL) {
+	SliceConst name;
+	f_Int *cell;
+	ArrayList b;
+	size_t ptr_int, i;
+	f_Word w;
+	f_Word *mem;
+
+	name = f_State_getToken(s);
+	if (name.ptr == 0) {
 		logD("MissingToken(VarName)");
 		return false;
 	}
 
-	f_Int *cell = malloc(sizeof(f_Int));
-	if (cell == NULL) {
+	cell = malloc(sizeof(f_Int));
+	if (cell == 0) {
 		logD("OOM");
 		return false;
 	}
 
-	ArrayList b = ArrayList_init();
+	b = ArrayList_init();
 	ArrayList_push(&b, F_INS_PUSHINT);
-	size_t ptr_int = (size_t)cell;
-	size_t i;
+	ptr_int = (size_t)cell;
 	for (i = sizeof(size_t); i > 0; i--) {
 		ArrayList_push(&b, (size_t) (ptr_int >> (i * 8 - 8)));
 	}
 
-	f_Word w;
 	w.tag = F_WORDT_BYTECODE;
 	w.is_immediate = false;
 	w.un.bytecode = b;
 
-	f_Word *mem = malloc(sizeof(f_Word));
+	mem = malloc(sizeof(f_Word));
 	if (mem == NULL) die("OOM");
 	*mem = w;
 
@@ -318,10 +328,11 @@ bool fw_beginIf(f_State *s) {
 	SliceConst w;
 	while ((w = f_State_getToken(s)).ptr != NULL) {
 		if (w.len == 1 && w.ptr[0] == ')') {
+			size_t len_int, i;
 			ArrayList *b = s->bytecode;
+
 			ArrayList_push(b, F_INS_JMPCOND);
-			size_t len_int = b->items.len;
-			size_t i;
+			len_int = b->items.len;
 			for (i = sizeof(size_t); i > 0; i--) {
 				ArrayList_push(b, (size_t) (len_int >> (i * 8 - 8)));
 			}

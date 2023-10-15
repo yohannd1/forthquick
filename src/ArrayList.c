@@ -6,10 +6,11 @@
 static bool ArrayList_resize(ArrayList *al);
 
 ArrayList ArrayList_init() {
-	return (ArrayList){
-		.items = (SliceMut){ .ptr = NULL, .len = 0 },
-		.capacity = 0,
-	};
+	ArrayList r;
+	r.items.ptr = NULL;
+	r.items.len = 0;
+	r.capacity = 0;
+	return r;
 }
 
 void ArrayList_deinit(ArrayList *al) {
@@ -29,7 +30,10 @@ bool ArrayList_updateCapacity(ArrayList *al, size_t capacity) {
 }
 
 static bool ArrayList_resize(ArrayList *al) {
-	size_t memsize = max(al->items.len, al->capacity);
+	size_t memsize;
+	uint8_t *m;
+
+	memsize = max(al->items.len, al->capacity);
 	if (memsize == 0) {
 		if (al->items.ptr != NULL) {
 			free(al->items.ptr);
@@ -38,7 +42,7 @@ static bool ArrayList_resize(ArrayList *al) {
 		return true;
 	}
 	
-	uint8_t *m = (al->items.ptr == NULL) ? malloc(memsize) : realloc(al->items.ptr, memsize);
+	m = (al->items.ptr == NULL) ? malloc(memsize) : realloc(al->items.ptr, memsize);
 	if (m == NULL) return false;
 
 	al->items.ptr = m;

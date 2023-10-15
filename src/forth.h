@@ -48,7 +48,7 @@ typedef struct f_Word {
 
 typedef enum f_WordType {
 	F_WORDT_FUNC = 0,
-	F_WORDT_BYTECODE,
+	F_WORDT_BYTECODE
 } f_WordType;
 
 bool f_State_init(f_State *dest);
@@ -74,7 +74,7 @@ typedef enum f_Instruction {
 	F_INS_CALLWORD, /* call a word */
 	F_INS_PWRITE,
 	F_INS_PREAD,
-	F_INS_JMPCOND,
+	F_INS_JMPCOND
 } f_Instruction;
 
 #endif
