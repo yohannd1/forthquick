@@ -11,12 +11,15 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] `if(` statement
 - [x] simplify variables (they become simply words that return adresses)
 - [x] floating point operations
+- [ ] loops / tail recursion
 - [ ] turn on -Wpedantic and fix every issue that arises
 - [ ] custom width variables?
 - [ ] `)else(` on if statement
+- [ ] I/O primitives (probably a `read` and `write` which take both a
+  fd, a buf and the max len )
 - [ ] fix bug: anything after >v VARNAME is ignored??
-- [ ] what more do i do? how do i approach if statements
-- [ ] C integration?? :))
 - [ ] lambdas (anonymous words)
+- [ ] dynamic word calling (for lambdas)
 - [ ] structs/tables/whatever (how would that work)
+- [ ] C integration?? :))
 - [ ] fibers? (how would that work? interpret code from each fiber alternatively?)

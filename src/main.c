@@ -7,8 +7,8 @@
 #include <stdlib.h>
 
 #ifdef HAS_READLINE
-	#include <readline/history.h>
-	#include <readline/readline.h>
+#include <readline/history.h>
+#include <readline/readline.h>
 #endif
 
 char *promptReadLine(f_State *s);
@@ -42,19 +42,19 @@ int main(void) {
 	f_State s;
 	if (!f_State_init(&s)) die("failed to init state");
 
-        /* memory primitives */
+	/* memory primitives */
 	f_State_defineWord(&s, "@", fw_fetch, false);
 	f_State_defineWord(&s, "!", fw_store, false);
 	f_State_defineWord(&s, "defvar", fw_defVar, true);
 
-        /* int stuff */
+	/* int stuff */
 	f_State_defineWord(&s, "+", fw_add, false);
 	f_State_defineWord(&s, "-", fw_sub, false);
 	f_State_defineWord(&s, "*", fw_mul, false);
 	f_State_defineWord(&s, "/", fw_div, false);
 	f_State_defineWord(&s, ".", fw_print, false);
 
-        /* float stuff */
+	/* float stuff */
 	f_State_defineWord(&s, "f+", fw_fadd, false);
 	f_State_defineWord(&s, "f-", fw_fsub, false);
 	f_State_defineWord(&s, "f*", fw_fmul, false);
@@ -86,7 +86,7 @@ int main(void) {
 
 		f_State_compileAndRun(&s, SLICE_FROMNUL(line));
 		fprintf(stderr, "ok\n");
-	read_end:
+read_end:
 		free(line);
 	}
 
@@ -138,29 +138,29 @@ char *promptReadLine(f_State *s) {
 }
 
 #define LOG(msg) \
-	{ fprintf(stderr, "%s", msg); }
+{ fprintf(stderr, "%s", msg); }
 
-#define TRY_POP(var)                                 \
-	f_Int var;                                  \
+#define TRY_POP(var) \
+	f_Int var; \
 	if (!f_Stack_pop(&s->working_stack, &var)) { \
-		LOG("StackUnderflow ");              \
-		return false;                        \
+		LOG("StackUnderflow "); \
+		return false; \
 	}
 
-#define TRY_PUSH(val)                                \
+#define TRY_PUSH(val) \
 	if (!f_Stack_push(&s->working_stack, val)) { \
-		LOG("OOM ");         \
-		return false;                        \
+		LOG("OOM "); \
+		return false; \
 	}
 
 #define DEFWORD(name, statements) bool name(f_State *s) statements
 #define DEF_BIN_ARITH_WORD(name, op) \
-    DEFWORD(name, { \
-	TRY_POP(n2); \
-	TRY_POP(n1); \
-	TRY_PUSH(op); \
-	return true; \
-    })
+	DEFWORD(name, { \
+		TRY_POP(n2); \
+		TRY_POP(n1); \
+		TRY_PUSH(op); \
+		return true; \
+		})
 
 DEF_BIN_ARITH_WORD(fw_add, n1 + n2);
 DEF_BIN_ARITH_WORD(fw_sub, n1 - n2);
@@ -176,26 +176,26 @@ DEFWORD(fw_print, {
 	TRY_POP(n);
 	fprintf(stderr, "%lu ", n);
 	return true;
-})
+	})
 
 DEFWORD(fw_fprint, {
 	TRY_POP(n);
 	fprintf(stderr, "%f ", f_intToFloat(n));
 	return true;
-})
+	})
 
 DEFWORD(fw_fetch, {
 	TRY_POP(addr);
 	TRY_PUSH(*(f_Int*)addr);
 	return true;
-})
+	})
 
 DEFWORD(fw_store, {
 	TRY_POP(addr);
 	TRY_POP(val);
 	*(f_Int*)addr = val;
 	return true;
-})
+	})
 
 bool fw_words(f_State *s) {
 	Dict_Iterator it = Dict_iter(&s->words);
@@ -311,63 +311,6 @@ bool fw_defVar(f_State *s) {
 	Dict_put(&s->words, name, (void*)mem);
 	return true;
 }
-
-/* bool fw_toVar(f_State *s) { */
-/* 	SliceConst w = f_State_getToken(s); */
-/* 	if (w.ptr == NULL) { */
-/* 		logD("MissingToken(VarName)"); */
-/* 		return false; */
-/* 	} */
-
-/* 	void *ptr; */
-/* 	Dict_Entry *en = Dict_findN(&s->variables, w); */
-/* 	if (en == NULL) { */
-/* 		ptr = malloc(sizeof(f_Int)); */
-/* 		if (ptr == NULL) { */
-/* 			logD("OOM"); */
-/* 			return false; */
-/* 		} */
-/* 		Dict_put(&s->variables, w, ptr); */
-/* 	} else { */
-/* 		ptr = en->value; */
-/* 	} */
-
-/* 	size_t ptr_int = (size_t)ptr; */
-
-/* 	ArrayList *b = s->bytecode; */
-/* 	ArrayList_push(b, F_INS_PWRITE); */
-/* 	size_t i; */
-/* 	for (i = sizeof(size_t); i > 0; i--) { */
-/* 		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8))); */
-/* 	} */
-
-/* 	return true; */
-/* } */
-
-/* bool fw_fromVar(f_State *s) { */
-/* 	SliceConst w = f_State_getToken(s); */
-/* 	if (w.ptr == NULL) { */
-/* 		logD("MissingToken(VarName)"); */
-/* 		return false; */
-/* 	} */
-
-/* 	Dict_Entry *d = Dict_findN(&s->variables, w); */
-/* 	if (d == NULL) { */
-/* 		logD("UnknownVar(%.*s)", w.len, w.ptr); */
-/* 		return false; */
-/* 	} */
-
-/* 	size_t ptr_int = (size_t)d->value; */
-
-/* 	ArrayList *b = s->bytecode; */
-/* 	ArrayList_push(b, F_INS_PREAD); */
-/* 	size_t i; */
-/* 	for (i = sizeof(size_t); i > 0; i--) { */
-/* 		ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8))); */
-/* 	} */
-
-/* 	return true; */
-/* } */
 
 bool fw_beginIf(f_State *s) {
 	ArrayList ift = ArrayList_init();

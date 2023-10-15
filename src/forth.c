@@ -36,18 +36,18 @@ static bool f_tryParseInt(SliceConst s, f_Int *it) {
 }
 
 static bool f_tryParseFloat(SliceConst s, f_Int *it) {
-    /* i feel so goddamn insane */
-    char *mem = malloc(s.len + 1);
-    if (!mem) die("OOM");
-    memcpy(mem, s.ptr, s.len);
-    mem[s.len] = '\0';
+	/* i feel so goddamn insane */
+	char *mem = malloc(s.len + 1);
+	if (!mem) die("OOM");
+	memcpy(mem, s.ptr, s.len);
+	mem[s.len] = '\0';
 
-    float f;
-    bool worked = sscanf(mem, "%f", &f) == 1;
-    if (worked) *it = f_floatToInt(f);
+	float f;
+	bool worked = sscanf(mem, "%f", &f) == 1;
+	if (worked) *it = f_floatToInt(f);
 
-    free(mem);
-    return worked;
+	free(mem);
+	return worked;
 }
 
 bool f_Stack_init(f_Stack *f) {
@@ -157,12 +157,12 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 		return true;
 	}
 
-        bool int_ok = false;
+	bool int_ok = false;
 
-        /* try parsing int/float and push it into the stack */
+	/* try parsing int/float and push it into the stack */
 	f_Int it;
-        int_ok = f_tryParseInt(w, &it);
-        if (!int_ok) int_ok = f_tryParseFloat(w, &it);
+	int_ok = f_tryParseInt(w, &it);
+	if (!int_ok) int_ok = f_tryParseFloat(w, &it);
 
 	if (int_ok) {
 		/* TODO: error handling? */
@@ -342,19 +342,19 @@ SliceConst f_State_getToken(f_State *s) {
 }
 
 f_Int f_floatToInt(float f) {
-    union {
-	float f;
-	f_Int i;
-    } u;
-    u.f = f;
-    return u.i;
+	union {
+		float f;
+		f_Int i;
+	} u;
+	u.f = f;
+	return u.i;
 }
 
 float f_intToFloat(f_Int i) {
-    union {
-	float f;
-	f_Int i;
-    } u;
-    u.i = i;
-    return u.f;
+	union {
+		float f;
+		f_Int i;
+	} u;
+	u.i = i;
+	return u.f;
 }
