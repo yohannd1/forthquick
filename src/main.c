@@ -18,12 +18,20 @@ bool fw_sub(f_State *s);
 bool fw_mul(f_State *s);
 bool fw_div(f_State *s);
 bool fw_print(f_State *s);
+bool fw_lt(f_State *s);
+bool fw_gt(f_State *s);
+bool fw_lte(f_State *s);
+bool fw_gte(f_State *s);
 
 bool fw_fadd(f_State *s);
 bool fw_fsub(f_State *s);
 bool fw_fmul(f_State *s);
 bool fw_fdiv(f_State *s);
 bool fw_fprint(f_State *s);
+bool fw_flt(f_State *s);
+bool fw_fgt(f_State *s);
+bool fw_flte(f_State *s);
+bool fw_fgte(f_State *s);
 
 bool fw_words(f_State *s);
 bool fw_show(f_State *s);
@@ -45,13 +53,17 @@ int main(void) {
 	/* memory primitives */
 	f_State_defineWord(&s, "@", fw_fetch, false);
 	f_State_defineWord(&s, "!", fw_store, false);
-	f_State_defineWord(&s, "defvar", fw_defVar, true);
+	f_State_defineWord(&s, "var:", fw_defVar, true);
 
 	/* int stuff */
 	f_State_defineWord(&s, "+", fw_add, false);
 	f_State_defineWord(&s, "-", fw_sub, false);
 	f_State_defineWord(&s, "*", fw_mul, false);
 	f_State_defineWord(&s, "/", fw_div, false);
+	f_State_defineWord(&s, "<", fw_lt, false);
+	f_State_defineWord(&s, ">", fw_gt, false);
+	f_State_defineWord(&s, "<=", fw_lte, false);
+	f_State_defineWord(&s, ">=", fw_gte, false);
 	f_State_defineWord(&s, ".", fw_print, false);
 
 	/* float stuff */
@@ -59,6 +71,10 @@ int main(void) {
 	f_State_defineWord(&s, "f-", fw_fsub, false);
 	f_State_defineWord(&s, "f*", fw_fmul, false);
 	f_State_defineWord(&s, "f/", fw_fdiv, false);
+	f_State_defineWord(&s, "f<", fw_flt, false);
+	f_State_defineWord(&s, "f>", fw_fgt, false);
+	f_State_defineWord(&s, "f<=", fw_flte, false);
+	f_State_defineWord(&s, "f>=", fw_fgte, false);
 	f_State_defineWord(&s, "f.", fw_fprint, false);
 
 	f_State_defineWord(&s, "words", fw_words, false);
@@ -168,35 +184,45 @@ DEF_BIN_ARITH_WORD(fw_sub, n1 - n2);
 DEF_BIN_ARITH_WORD(fw_mul, n1 * n2);
 DEF_BIN_ARITH_WORD(fw_div, n1 / n2);
 
+DEF_BIN_ARITH_WORD(fw_lt, n1 < n2);
+DEF_BIN_ARITH_WORD(fw_gt, n1 > n2);
+DEF_BIN_ARITH_WORD(fw_lte, n1 <= n2);
+DEF_BIN_ARITH_WORD(fw_gte, n1 >= n2);
+
 DEF_BIN_ARITH_WORD(fw_fadd, f_floatToInt(f_intToFloat(n1) + f_intToFloat(n2)));
 DEF_BIN_ARITH_WORD(fw_fsub, f_floatToInt(f_intToFloat(n1) - f_intToFloat(n2)));
 DEF_BIN_ARITH_WORD(fw_fmul, f_floatToInt(f_intToFloat(n1) * f_intToFloat(n2)));
 DEF_BIN_ARITH_WORD(fw_fdiv, f_floatToInt(f_intToFloat(n1) / f_intToFloat(n2)));
 
+DEF_BIN_ARITH_WORD(fw_flt, f_intToFloat(n1) < f_intToFloat(n2));
+DEF_BIN_ARITH_WORD(fw_fgt, f_intToFloat(n1) > f_intToFloat(n2));
+DEF_BIN_ARITH_WORD(fw_flte, f_intToFloat(n1) <= f_intToFloat(n2));
+DEF_BIN_ARITH_WORD(fw_fgte, f_intToFloat(n1) >= f_intToFloat(n2));
+
 DEFWORD(fw_print, {
 	TRY_POP(n);
 	fprintf(stderr, "%lu ", n);
 	return true;
-	})
+})
 
 DEFWORD(fw_fprint, {
 	TRY_POP(n);
 	fprintf(stderr, "%f ", f_intToFloat(n));
 	return true;
-	})
+})
 
 DEFWORD(fw_fetch, {
 	TRY_POP(addr);
 	TRY_PUSH(*(f_Int*)addr);
 	return true;
-	})
+})
 
 DEFWORD(fw_store, {
 	TRY_POP(addr);
 	TRY_POP(val);
 	*(f_Int*)addr = val;
 	return true;
-	})
+})
 
 bool fw_words(f_State *s) {
 	Dict_Iterator it = Dict_iter(&s->words);
