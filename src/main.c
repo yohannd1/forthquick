@@ -78,6 +78,8 @@ int main(void) {
 	char *linebuf = malloc(linelen);
 	if (linebuf == NULL) printf("OOM\n");
 	while (!s.is_closed) {
+		fprintf(stderr, "ok\n");
+
 		char *line = promptReadLine(&s);
 		if (line == NULL) {
 			s.is_closed = true;
@@ -85,7 +87,6 @@ int main(void) {
 		}
 
 		f_State_compileAndRun(&s, SLICE_FROMNUL(line));
-		fprintf(stderr, "ok\n");
 read_end:
 		free(line);
 	}

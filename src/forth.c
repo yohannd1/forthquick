@@ -112,7 +112,7 @@ void f_State_defineWord(f_State *s, const char *wordname, f_WordFunc func, bool 
 }
 
 void f_State_compileAndRun(f_State *s, SliceConst line) {
-	if (s->echo) fprintf(stderr, "\n%s%.*s\n", s->prompt_string, (int) line.len, line.ptr);
+	if (s->echo) fprintf(stderr, "%s%.*s\n", s->prompt_string, (int) line.len, line.ptr);
 
 	SliceMut bytecode;
 	if (!f_State_compile(s, line, &bytecode)) return;
