@@ -108,25 +108,28 @@ void f_State_defineWord(f_State *s, const char *wordname, f_WordFunc func, bool 
 	mem = malloc(sizeof(f_Word));
 	if (mem == NULL) die("OOM");
 	*mem = w;
-	Dict_put(&s->words, SLICE_FROMNUL(wordname), mem);
+	Dict_put(&s->words, SliceConst_fromCString(wordname), mem);
 }
 
 void f_State_compileAndRun(f_State *s, SliceConst line) {
+	SliceMut bytecode;
+
 	if (s->echo) fprintf(stderr, "%s%.*s\n", s->prompt_string, (int) line.len, line.ptr);
 
-	SliceMut bytecode;
 	if (!f_State_compile(s, line, &bytecode)) return;
-	f_State_run(s, SLICE_MUT2CONST(bytecode));
+	f_State_run(s, SliceConst_fromMut(bytecode));
 }
 
 bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest) {
+	ArrayList b;
+	SliceConst w;
+
 	s->reader_str = line;
 	s->reader_idx = 0;
 
-	ArrayList b = ArrayList_init();
+	b = ArrayList_init();
 	s->bytecode = &b;
 
-	SliceConst w;
 	while ((w = f_State_getToken(s)).ptr != NULL) {
 		if (!f_State_compileSingleWord(s, &b, w)) goto error;
 	}
@@ -142,20 +145,24 @@ error:
 }
 
 bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
-	Dict_Entry *e = Dict_findN(&s->words, w);
+	bool int_ok = false;
+	Dict_Entry *e;
+	f_Int it;
+
+	e = Dict_findN(&s->words, w);
 	if (e != NULL) {
+		size_t ptr_int, i;
+		f_Word *w;
+
 		/* process word */
-		f_Word *w = e->value;
+		w = e->value;
 
 		if (w->is_immediate) {
 			return f_State_evalWord(s, w);
 		}
 		ArrayList_push(b, F_INS_CALLWORD);
 
-		/* decode pointer into an array */
-		size_t ptr_int = (size_t) w;
-		/* logD("ENCODING PTR %ld", ptr_int); */
-		size_t i;
+		ptr_int = (size_t) w;
 		for (i = sizeof(size_t); i > 0; i--) {
 			ArrayList_push(b, (size_t) (ptr_int >> (i * 8 - 8)));
 		}
@@ -163,18 +170,16 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 		return true;
 	}
 
-	bool int_ok = false;
-
 	/* try parsing int/float and push it into the stack */
-	f_Int it;
 	int_ok = f_tryParseInt(w, &it);
 	if (!int_ok) int_ok = f_tryParseFloat(w, &it);
 
 	if (int_ok) {
+		size_t i;
+
 		/* TODO: error handling? */
 		ArrayList_push(b, F_INS_PUSHINT);
 
-		size_t i;
 		for (i = sizeof(f_Int); i > 0; i--) {
 			uint8_t val = it >> (i * 8 - 8);
 			ArrayList_push(b, val);
@@ -188,114 +193,94 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 }
 
 bool f_State_run(f_State *s, SliceConst bytecode) {
-	size_t i = 0;
-	for (; i < bytecode.len; i++) {
+	size_t i;
+	for (i = 0; i < bytecode.len; i++) {
 		uint8_t ins = bytecode.ptr[i];
 		switch (ins) {
 		case F_INS_PUSHINT: {
 			f_Int it = 0;
-
-			/* logD("DECODING INT..."); */
 			size_t j;
+
 			for (j = sizeof(f_Int); j > 0; j--) {
+				uint8_t byte;
+
 				if (i >= bytecode.len) {
-					/* logD("bytecode abruptly ended"); */
 					return false;
 				}
 
-				uint8_t byte = bytecode.ptr[++i];
-				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				byte = bytecode.ptr[++i];
 				it += (f_Int) byte << (j * 8 - 8);
 			}
-			/* logD("DECODED INT %d", it); */
 			f_Stack_push(&s->working_stack, it);
 			break;
 		}
 		case F_INS_CALLWORD: {
-			size_t it = 0;
+			size_t it = 0, j;
+			f_Word *w;
 
-			/* logD("DECODING PTR..."); */
-			size_t j;
 			for (j = sizeof(size_t); j > 0; j--) {
-				if (i >= bytecode.len) {
-					/* logD("bytecode abruptly ended"); */
-					return false;
-				}
+				uint8_t byte;
 
-				uint8_t byte = bytecode.ptr[++i];
-				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				if (i >= bytecode.len) return false;
+				byte = bytecode.ptr[++i];
 				it += (size_t) byte << (j * 8 - 8);
 			}
 
-			/* logD("DECODED PTR %d", it); */
-			f_Word *w = (f_Word *) it;
+			w = (f_Word *) it;
 			if (!f_State_evalWord(s, w)) return false;
 			break;
 		}
 		case F_INS_PREAD: {
-			size_t it = 0;
+			size_t it, j;
 
-			/* logD("DECODING PTR..."); */
-			size_t j;
+			it = 0;
 			for (j = sizeof(size_t); j > 0; j--) {
-				if (i >= bytecode.len) {
-					/* logD("bytecode abruptly ended"); */
-					return false;
-				}
+				uint8_t byte;
 
-				uint8_t byte = bytecode.ptr[++i];
-				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				if (i >= bytecode.len) return false;
+
+				byte = bytecode.ptr[++i];
 				it += (size_t) byte << (j * 8 - 8);
 			}
 
-			/* logD("DECODED PTR %d", it); */
 			return f_Stack_push(&s->working_stack, *(f_Int*)it);
 		}
 		case F_INS_PWRITE: {
-			size_t it = 0;
+			size_t it, j;
+			f_Int n;
 
-			/* logD("DECODING PTR..."); */
-			size_t j;
+			it = 0 ;
 			for (j = sizeof(size_t); j > 0; j--) {
-				if (i >= bytecode.len) {
-					/* logD("bytecode abruptly ended"); */
-					return false;
-				}
+				uint8_t byte;
 
-				uint8_t byte = bytecode.ptr[++i];
-				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				if (i >= bytecode.len) return false;
+
+				byte = bytecode.ptr[++i];
 				it += (size_t) byte << (j * 8 - 8);
 			}
-			/* logD("DECODED PTR %d", it); */
 
-			f_Int n;
 			if (!f_Stack_pop(&s->working_stack, &n)) {
 				logD("StackUnderflow");
 				return false;
 			}
 
-			f_Int *ptr = (f_Int *) it;
-			*ptr = n;
+			*((f_Int *) it) = n;
 			break;
 		}
 		case F_INS_JMPCOND: {
-			size_t it = 0;
+			size_t it, j;
+			f_Int n;
 
-			/* logD("DECODING LEN..."); */
-			size_t j;
+			it = 0;
 			for (j = sizeof(size_t); j > 0; j--) {
-				if (i >= bytecode.len) {
-					/* logD("bytecode abruptly ended"); */
-					return false;
-				}
+				uint8_t byte;
 
-				uint8_t byte = bytecode.ptr[++i];
-				/* logD("+= %d << %d", byte, (j * 8 - 8)); */
+				if (i >= bytecode.len) return false;
+
+				byte = bytecode.ptr[++i];
 				it += (size_t) byte << (j * 8 - 8);
 			}
-			/* logD("DECODED LEN %d", it); */
 
-			f_Int n;
 			if (!f_Stack_pop(&s->working_stack, &n)) {
 				logD("StackUnderflow");
 				return false;
@@ -313,7 +298,7 @@ static bool f_State_evalWord(f_State *s, const f_Word *w) {
 	if (w->tag == F_WORDT_FUNC) return w->un.func_ptr(s);
 
 	if (w->tag == F_WORDT_BYTECODE)
-		return f_State_run(s, SLICE_MUT2CONST(w->un.bytecode.items));
+		return f_State_run(s, SliceConst_fromMut(w->un.bytecode.items));
 
 	logD("unknown WORDT tag #%02x", w->tag);
 	return false;
@@ -324,6 +309,10 @@ static bool isWhitespace(char c) {
 }
 
 SliceConst f_State_getToken(f_State *s) {
+	size_t i;
+	SliceConst r;
+	const uint8_t *ret_start;
+
 	/* skip leading whitespace */
 	while (s->reader_idx < s->reader_str.len) {
 		char c = s->reader_str.ptr[s->reader_idx];
@@ -331,20 +320,22 @@ SliceConst f_State_getToken(f_State *s) {
 		s->reader_idx++;
 	}
 
-	if (s->reader_idx >= s->reader_str.len) return (SliceConst) { .ptr = NULL, .len = 0 };
+	if (s->reader_idx >= s->reader_str.len) return SliceConst_newEmpty();
+	
 
-	const uint8_t *ret_start = &s->reader_str.ptr[s->reader_idx];
-	size_t i = 0;
-	while (true) {
+	ret_start = &s->reader_str.ptr[s->reader_idx];
+	for (i = 0;; s->reader_idx++, i++) {
 		char c = s->reader_str.ptr[s->reader_idx];
 		if (isWhitespace(c) || c == '\0') break;
-
-		s->reader_idx++;
-		i++;
 	}
 
-	if (i > 0) return (SliceConst) { .ptr = ret_start, .len = i };
-	return (SliceConst) { .ptr = NULL, .len = 0 };
+	if (i > 0) {
+		r.ptr = ret_start;
+		r.len = i;
+		return r;
+	}
+
+	return SliceConst_newEmpty();
 }
 
 f_Int f_floatToInt(float f) {

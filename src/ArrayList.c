@@ -2,10 +2,34 @@
 
 #include <stdlib.h>
 
+/* TODO: exponential growth in capacity for less allocations */
+
 #define max(a, b) (a) > (b) ? (a) : (b)
+
+SliceConst SliceConst_fromCString(const char *s) {
+	SliceConst r;
+	r.ptr = (const uint8_t*)s;
+	r.len = strlen(s);
+	return r;
+}
+
+SliceConst SliceConst_fromMut(SliceMut mut) {
+	SliceConst r;
+	r.ptr = mut.ptr;
+	r.len = mut.len;
+	return r;
+}
+
+SliceConst SliceConst_newEmpty(void) {
+	SliceConst r;
+	r.ptr = NULL;
+	r.len = 0;
+	return r;
+}
+
 static bool ArrayList_resize(ArrayList *al);
 
-ArrayList ArrayList_init() {
+ArrayList ArrayList_init(void) {
 	ArrayList r;
 	r.items.ptr = NULL;
 	r.items.len = 0;

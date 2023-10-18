@@ -46,63 +46,71 @@ bool fw_defVar(f_State *s);
 /* bool fw_fromVar(f_State *s); */
 bool fw_beginIf(f_State *s);
 
-int main(void) {
-	f_State s;
-	if (!f_State_init(&s)) die("failed to init state");
-
+void defWords(f_State *s) {
 	/* memory primitives */
-	f_State_defineWord(&s, "@", fw_fetch, false);
-	f_State_defineWord(&s, "!", fw_store, false);
-	f_State_defineWord(&s, "var:", fw_defVar, true);
+	f_State_defineWord(s, "@", fw_fetch, false);
+	f_State_defineWord(s, "!", fw_store, false);
+	f_State_defineWord(s, "var:", fw_defVar, true);
 
 	/* int stuff */
-	f_State_defineWord(&s, "+", fw_add, false);
-	f_State_defineWord(&s, "-", fw_sub, false);
-	f_State_defineWord(&s, "*", fw_mul, false);
-	f_State_defineWord(&s, "/", fw_div, false);
-	f_State_defineWord(&s, "<", fw_lt, false);
-	f_State_defineWord(&s, ">", fw_gt, false);
-	f_State_defineWord(&s, "<=", fw_lte, false);
-	f_State_defineWord(&s, ">=", fw_gte, false);
-	f_State_defineWord(&s, ".", fw_print, false);
+	f_State_defineWord(s, "+", fw_add, false);
+	f_State_defineWord(s, "-", fw_sub, false);
+	f_State_defineWord(s, "*", fw_mul, false);
+	f_State_defineWord(s, "/", fw_div, false);
+	f_State_defineWord(s, "<", fw_lt, false);
+	f_State_defineWord(s, ">", fw_gt, false);
+	f_State_defineWord(s, "<=", fw_lte, false);
+	f_State_defineWord(s, ">=", fw_gte, false);
+	f_State_defineWord(s, ".", fw_print, false);
 
 	/* float stuff */
-	f_State_defineWord(&s, "f+", fw_fadd, false);
-	f_State_defineWord(&s, "f-", fw_fsub, false);
-	f_State_defineWord(&s, "f*", fw_fmul, false);
-	f_State_defineWord(&s, "f/", fw_fdiv, false);
-	f_State_defineWord(&s, "f<", fw_flt, false);
-	f_State_defineWord(&s, "f>", fw_fgt, false);
-	f_State_defineWord(&s, "f<=", fw_flte, false);
-	f_State_defineWord(&s, "f>=", fw_fgte, false);
-	f_State_defineWord(&s, "f.", fw_fprint, false);
+	f_State_defineWord(s, "f+", fw_fadd, false);
+	f_State_defineWord(s, "f-", fw_fsub, false);
+	f_State_defineWord(s, "f*", fw_fmul, false);
+	f_State_defineWord(s, "f/", fw_fdiv, false);
+	f_State_defineWord(s, "f<", fw_flt, false);
+	f_State_defineWord(s, "f>", fw_fgt, false);
+	f_State_defineWord(s, "f<=", fw_flte, false);
+	f_State_defineWord(s, "f>=", fw_fgte, false);
+	f_State_defineWord(s, "f.", fw_fprint, false);
 
-	f_State_defineWord(&s, "words", fw_words, false);
-	f_State_defineWord(&s, ".s", fw_show, false);
-	f_State_defineWord(&s, "quit", fw_quit, false);
-	f_State_defineWord(&s, ":", fw_beginWordCompile, true);
-	f_State_defineWord(&s, "(", fw_beginComment, true);
-	f_State_defineWord(&s, "((", fw_beginComment2, true);
-	f_State_defineWord(&s, "if(", fw_beginIf, true);
+	f_State_defineWord(s, "words", fw_words, false);
+	f_State_defineWord(s, ".s", fw_show, false);
+	f_State_defineWord(s, "quit", fw_quit, false);
+	f_State_defineWord(s, ":", fw_beginWordCompile, true);
+	f_State_defineWord(s, "(", fw_beginComment, true);
+	f_State_defineWord(s, "((", fw_beginComment2, true);
+	f_State_defineWord(s, "if(", fw_beginIf, true);
+}
+
+int main(void) {
+	f_State s;
+	size_t linelen;
+	char *linebuf;
+
+
+	if (!f_State_init(&s)) die("failed to init state");
+	defWords(&s);
 
 	s.echo = true;
-	f_State_compileAndRun(&s, SLICE_FROMNUL("( Welcome to QuickForth v0.3. )"));
-	f_State_compileAndRun(&s, SLICE_FROMNUL("( Type 'words' to list words. )"));
+	f_State_compileAndRun(&s, SliceConst_fromCString("( Welcome to QuickForth v0.3. )"));
+	f_State_compileAndRun(&s, SliceConst_fromCString("( Type 'words' to list words. )"));
 	s.echo = false;
 
-	size_t linelen = 128;
-	char *linebuf = malloc(linelen);
+	linelen = 128;
+	linebuf = malloc(linelen);
 	if (linebuf == NULL) printf("OOM\n");
 	while (!s.is_closed) {
-		fprintf(stderr, "ok\n");
+		char *line;
 
-		char *line = promptReadLine(&s);
+		fprintf(stderr, "ok\n");
+		line = promptReadLine(&s);
 		if (line == NULL) {
 			s.is_closed = true;
 			goto read_end;
 		}
 
-		f_State_compileAndRun(&s, SLICE_FROMNUL(line));
+		f_State_compileAndRun(&s, SliceConst_fromCString(line));
 read_end:
 		free(line);
 	}
@@ -158,8 +166,7 @@ char *promptReadLine(f_State *s) {
 { fprintf(stderr, "%s", msg); }
 
 #define TRY_POP(var) \
-	f_Int var; \
-	if (!f_Stack_pop(&s->working_stack, &var)) { \
+	if (!f_Stack_pop(&s->working_stack, var)) { \
 		LOG("StackUnderflow "); \
 		return false; \
 	}
@@ -173,53 +180,60 @@ char *promptReadLine(f_State *s) {
 #define DEFWORD(name, statements) bool name(f_State *s) statements
 #define DEF_BIN_ARITH_WORD(name, op) \
 	DEFWORD(name, { \
-		TRY_POP(n2); \
-		TRY_POP(n1); \
+		f_Int n1; \
+		f_Int n2; \
+		TRY_POP(&n2); \
+		TRY_POP(&n1); \
 		TRY_PUSH(op); \
 		return true; \
-		})
+		}) \
 
-DEF_BIN_ARITH_WORD(fw_add, n1 + n2);
-DEF_BIN_ARITH_WORD(fw_sub, n1 - n2);
-DEF_BIN_ARITH_WORD(fw_mul, n1 * n2);
-DEF_BIN_ARITH_WORD(fw_div, n1 / n2);
+DEF_BIN_ARITH_WORD(fw_add, n1 + n2)
+DEF_BIN_ARITH_WORD(fw_sub, n1 - n2)
+DEF_BIN_ARITH_WORD(fw_mul, n1 * n2)
+DEF_BIN_ARITH_WORD(fw_div, n1 / n2)
 
-DEF_BIN_ARITH_WORD(fw_lt, n1 < n2);
-DEF_BIN_ARITH_WORD(fw_gt, n1 > n2);
-DEF_BIN_ARITH_WORD(fw_lte, n1 <= n2);
-DEF_BIN_ARITH_WORD(fw_gte, n1 >= n2);
+DEF_BIN_ARITH_WORD(fw_lt, n1 < n2)
+DEF_BIN_ARITH_WORD(fw_gt, n1 > n2)
+DEF_BIN_ARITH_WORD(fw_lte, n1 <= n2)
+DEF_BIN_ARITH_WORD(fw_gte, n1 >= n2)
 
-DEF_BIN_ARITH_WORD(fw_fadd, f_floatToInt(f_intToFloat(n1) + f_intToFloat(n2)));
-DEF_BIN_ARITH_WORD(fw_fsub, f_floatToInt(f_intToFloat(n1) - f_intToFloat(n2)));
-DEF_BIN_ARITH_WORD(fw_fmul, f_floatToInt(f_intToFloat(n1) * f_intToFloat(n2)));
-DEF_BIN_ARITH_WORD(fw_fdiv, f_floatToInt(f_intToFloat(n1) / f_intToFloat(n2)));
+DEF_BIN_ARITH_WORD(fw_fadd, f_floatToInt(f_intToFloat(n1) + f_intToFloat(n2)))
+DEF_BIN_ARITH_WORD(fw_fsub, f_floatToInt(f_intToFloat(n1) - f_intToFloat(n2)))
+DEF_BIN_ARITH_WORD(fw_fmul, f_floatToInt(f_intToFloat(n1) * f_intToFloat(n2)))
+DEF_BIN_ARITH_WORD(fw_fdiv, f_floatToInt(f_intToFloat(n1) / f_intToFloat(n2)))
 
-DEF_BIN_ARITH_WORD(fw_flt, f_intToFloat(n1) < f_intToFloat(n2));
-DEF_BIN_ARITH_WORD(fw_fgt, f_intToFloat(n1) > f_intToFloat(n2));
-DEF_BIN_ARITH_WORD(fw_flte, f_intToFloat(n1) <= f_intToFloat(n2));
-DEF_BIN_ARITH_WORD(fw_fgte, f_intToFloat(n1) >= f_intToFloat(n2));
+DEF_BIN_ARITH_WORD(fw_flt, f_intToFloat(n1) < f_intToFloat(n2))
+DEF_BIN_ARITH_WORD(fw_fgt, f_intToFloat(n1) > f_intToFloat(n2))
+DEF_BIN_ARITH_WORD(fw_flte, f_intToFloat(n1) <= f_intToFloat(n2))
+DEF_BIN_ARITH_WORD(fw_fgte, f_intToFloat(n1) >= f_intToFloat(n2))
 
 DEFWORD(fw_print, {
-	TRY_POP(n);
+	f_Int n;
+	TRY_POP(&n);
 	fprintf(stderr, "%lu ", n);
 	return true;
 })
 
 DEFWORD(fw_fprint, {
-	TRY_POP(n);
+	f_Int n;
+	TRY_POP(&n);
 	fprintf(stderr, "%f ", f_intToFloat(n));
 	return true;
 })
 
 DEFWORD(fw_fetch, {
-	TRY_POP(addr);
+	f_Int addr;
+	TRY_POP(&addr);
 	TRY_PUSH(*(f_Int*)addr);
 	return true;
 })
 
 DEFWORD(fw_store, {
-	TRY_POP(addr);
-	TRY_POP(val);
+	f_Int addr;
+	f_Int val;
+	TRY_POP(&addr);
+	TRY_POP(&val);
 	*(f_Int*)addr = val;
 	return true;
 })

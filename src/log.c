@@ -1,8 +1,9 @@
 #include "log.h"
 
 void logD(const char *fmt, ...) {
-	fprintf(stderr, "[log] ");
 	va_list args;
+
+	fprintf(stderr, "[log] ");
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
 	fprintf(stderr, "\n");
@@ -10,8 +11,9 @@ void logD(const char *fmt, ...) {
 }
 
 void die(const char *fmt, ...) {
-	fprintf(stderr, "[fatal] ");
 	va_list args;
+
+	fprintf(stderr, "[fatal] ");
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
 	va_end(args);

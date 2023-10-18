@@ -11,8 +11,9 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] `if(` statement
 - [x] simplify variables (they become simply words that return adresses)
 - [x] floating point operations
+- [x] turn on -Wpedantic and fix every issue that arises
+- [ ] actually use working stack (I forgot that!!)
 - [ ] loops / tail recursion
-- [ ] turn on -Wpedantic and fix every issue that arises
 - [ ] custom width variables?
 - [ ] `)else(` on if statement
 - [ ] I/O primitives (probably a `read` and `write` which take both a

@@ -71,7 +71,8 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word);
 
 typedef enum f_Instruction {
 	F_INS_PUSHINT = 0, /* push an int to the stack */
-	F_INS_CALLWORD, /* call a word */
+	F_INS_JMPWORD, /* jump to a word */
+	F_INS_CALLWORD, /* call a word (jump + push to return stack) */
 	F_INS_PWRITE,
 	F_INS_PREAD,
 	F_INS_JMPCOND
