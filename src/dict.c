@@ -1,7 +1,6 @@
 #include "dict.h"
 #include "ArrayList.h"
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
 

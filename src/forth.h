@@ -1,10 +1,10 @@
 #ifndef _FORTH_H
 #define _FORTH_H
 
+#include "bool.h"
 #include "dict.h"
 #include "ArrayList.h"
 
-#include <stdbool.h>
 #include <stdint.h>
 
 typedef size_t f_Int; /* TODO: perhaps call this cell? since i'm even using this to represent floats... */

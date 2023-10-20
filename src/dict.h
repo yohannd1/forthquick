@@ -4,8 +4,8 @@
 /* adapted from https://stackoverflow.com/a/4384446 */
 
 #include "ArrayList.h"
+#include "bool.h"
 
-#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct Dict_Entry {

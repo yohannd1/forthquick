@@ -5,7 +5,7 @@
 #define max(a, b) (a) > (b) ? (a) : (b)
 static bool ArrayList_resize(ArrayList *al);
 
-ArrayList ArrayList_init() {
+ArrayList ArrayList_init(void) {
 	ArrayList r;
 	r.items.ptr = NULL;
 	r.items.len = 0;

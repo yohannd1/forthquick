@@ -11,6 +11,8 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] `if(` statement
 - [x] simplify variables (they become simply words that return adresses)
 - [x] floating point operations
+- [x] get rid of stdbool.h (it's a C99 extension!)
+- [ ] test-compile with clang and some other C compiler
 - [ ] loops / tail recursion
 - [ ] turn on -Wpedantic and fix every issue that arises
 - [ ] custom width variables?

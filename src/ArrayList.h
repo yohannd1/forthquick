@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include <string.h>
+
+#include "bool.h"
 
 #define SLICE_FROMNUL(s) (SliceConst){ .ptr = (const uint8_t*)s, .len = strlen(s) }
 #define SLICE_MUT2CONST(mut) (SliceConst){ .ptr = mut.ptr, .len = mut.len }
@@ -24,7 +25,7 @@ typedef struct ArrayList {
 	size_t capacity;
 } ArrayList;
 
-ArrayList ArrayList_init();
+ArrayList ArrayList_init(void);
 void ArrayList_deinit(ArrayList *al);
 bool ArrayList_reserveNMore(ArrayList *al, size_t amount);
 bool ArrayList_updateCapacity(ArrayList *al, size_t capacity);
