@@ -12,7 +12,9 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] simplify variables (they become simply words that return adresses)
 - [x] floating point operations
 - [x] turn on -Wpedantic and fix every issue that arises
-- [ ] actually use working stack (I forgot that!!)
+- [x] get rid of stdbool.h (it's a C99 extension!)
+- [ ] test-compile with clang and some other C compiler
+- [ ] actually use return stack (I forgot that!!)
 - [ ] loops / tail recursion
 - [ ] custom width variables?
 - [ ] `)else(` on if statement

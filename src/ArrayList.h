@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include <string.h>
+
+#include "bool.h"
 
 typedef struct SliceMut {
 	uint8_t *ptr;
