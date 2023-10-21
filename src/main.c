@@ -278,6 +278,8 @@ bool fw_beginWordCompile(f_State *s) {
 			f_Word w;
 			f_Word *mem;
 
+			ArrayList_push(&b, F_INS_RETURN);
+
 			w.tag = F_WORDT_BYTECODE;
 			w.is_immediate = false;
 			w.un.bytecode = b;

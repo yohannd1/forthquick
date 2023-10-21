@@ -25,10 +25,10 @@ f_Int f_floatToInt(float f);
 
 typedef struct f_State {
 	Dict words;
-	Dict variables;
-	ArrayList *bytecode;
+	ArrayList *bytecode; /* TODO: rename this? it's the compilation bytecode and rn it's very abiguous */
 	f_Stack working_stack;
 	f_Stack return_stack;
+	const uint8_t *next_byte;
 	bool is_closed;
 	SliceConst reader_str;
 	size_t reader_idx;
@@ -70,11 +70,12 @@ SliceConst f_State_getToken(f_State *s);
 bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word);
 
 typedef enum f_Instruction {
-	F_INS_PUSHINT = 0, /* push an int to the stack */
+	F_INS_RETURN = 0, /* return */
+	F_INS_PUSHINT, /* push an int to the stack */
 	F_INS_JMPWORD, /* jump to a word */
 	F_INS_CALLWORD, /* call a word (jump + push to return stack) */
-	F_INS_PWRITE,
-	F_INS_PREAD,
+	F_INS_PWRITE, /* TODO: what is this again? */
+	F_INS_PREAD, /* TODO: what is this again? */
 	F_INS_JMPCOND
 } f_Instruction;
 

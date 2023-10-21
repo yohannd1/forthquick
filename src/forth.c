@@ -85,8 +85,8 @@ bool f_State_init(f_State *dest) {
 	if (!f_Stack_init(&dest->working_stack)) return false;
 	if (!f_Stack_init(&dest->return_stack)) return false;
 	if (!Dict_init(&dest->words, 128)) return false;
-	if (!Dict_init(&dest->variables, 128)) return false;
 	dest->bytecode = NULL;
+	dest->next_byte = NULL;
 	dest->is_closed = false;
 	dest->reader_str.ptr = NULL;
 	dest->reader_str.len = 0;
@@ -133,6 +133,8 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest) {
 	while ((w = f_State_getToken(s)).ptr != NULL) {
 		if (!f_State_compileSingleWord(s, &b, w)) goto error;
 	}
+
+	ArrayList_push(&b, F_INS_RETURN);
 
 	s->bytecode = NULL;
 	*dest = b.items;
@@ -193,10 +195,21 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 }
 
 bool f_State_run(f_State *s, SliceConst bytecode) {
-	size_t i;
-	for (i = 0; i < bytecode.len; i++) {
-		uint8_t ins = bytecode.ptr[i];
+	s->next_byte = bytecode.ptr;
+
+	for (;;) {
+		uint8_t ins = *(s->next_byte++);
 		switch (ins) {
+		case F_INS_RETURN: {
+			f_Int i;
+
+			if (s->return_stack.len == 0) return true; /* finish gracefully if the return stack is empty */
+
+			f_Stack_pop(&s->return_stack, &i);
+			logD("Shall be returning to %lu", i);
+			s->next_byte = (uint8_t*)i;
+			break;
+		}
 		case F_INS_PUSHINT: {
 			f_Int it = 0;
 			size_t j;
@@ -204,11 +217,7 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			for (j = sizeof(f_Int); j > 0; j--) {
 				uint8_t byte;
 
-				if (i >= bytecode.len) {
-					return false;
-				}
-
-				byte = bytecode.ptr[++i];
+				byte = *(s->next_byte++);
 				it += (f_Int) byte << (j * 8 - 8);
 			}
 			f_Stack_push(&s->working_stack, it);
@@ -217,17 +226,32 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 		case F_INS_CALLWORD: {
 			size_t it = 0, j;
 			f_Word *w;
+			f_Int tmp;
 
 			for (j = sizeof(size_t); j > 0; j--) {
 				uint8_t byte;
 
-				if (i >= bytecode.len) return false;
-				byte = bytecode.ptr[++i];
+				byte = *(s->next_byte++);
 				it += (size_t) byte << (j * 8 - 8);
 			}
 
 			w = (f_Word *) it;
-			if (!f_State_evalWord(s, w)) return false;
+			switch (w->tag) {
+			case F_WORDT_FUNC:
+				/* call the C function */
+				if (!w->un.func_ptr(s)) return false;
+				break;
+			case F_WORDT_BYTECODE:
+				/* push current bytecode addr and jump to the word bytecode */
+				tmp = (f_Int)s->next_byte;
+				f_Stack_push(&s->return_stack, tmp);
+				s->next_byte = w->un.bytecode.items.ptr;
+				break;
+			default:
+				logD("unknown WORDT tag #%02x", w->tag);
+				return false;
+			}
+
 			break;
 		}
 		case F_INS_PREAD: {
@@ -237,9 +261,7 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			for (j = sizeof(size_t); j > 0; j--) {
 				uint8_t byte;
 
-				if (i >= bytecode.len) return false;
-
-				byte = bytecode.ptr[++i];
+				byte = *(s->next_byte++);
 				it += (size_t) byte << (j * 8 - 8);
 			}
 
@@ -253,9 +275,7 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			for (j = sizeof(size_t); j > 0; j--) {
 				uint8_t byte;
 
-				if (i >= bytecode.len) return false;
-
-				byte = bytecode.ptr[++i];
+				byte = *(s->next_byte++);
 				it += (size_t) byte << (j * 8 - 8);
 			}
 
@@ -275,9 +295,7 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 			for (j = sizeof(size_t); j > 0; j--) {
 				uint8_t byte;
 
-				if (i >= bytecode.len) return false;
-
-				byte = bytecode.ptr[++i];
+				byte = *(s->next_byte++);
 				it += (size_t) byte << (j * 8 - 8);
 			}
 
@@ -286,9 +304,12 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 				return false;
 			}
 
-			if (n == 0) i += it;
+			if (n == 0) s->next_byte += it;
 			break;
 		}
+		default:
+			logD("unknown instruction #%02x", ins);
+			return false;
 		}
 	}
 	return true;
@@ -297,8 +318,7 @@ bool f_State_run(f_State *s, SliceConst bytecode) {
 static bool f_State_evalWord(f_State *s, const f_Word *w) {
 	if (w->tag == F_WORDT_FUNC) return w->un.func_ptr(s);
 
-	if (w->tag == F_WORDT_BYTECODE)
-		return f_State_run(s, SliceConst_fromMut(w->un.bytecode.items));
+	if (w->tag == F_WORDT_BYTECODE) die("attempt to run bytecode function at compile time"); /* TODO: this should work! */
 
 	logD("unknown WORDT tag #%02x", w->tag);
 	return false;

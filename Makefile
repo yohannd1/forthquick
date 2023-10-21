@@ -18,4 +18,7 @@ $(PROG): $(SRC) $(HEADERS)
 run: $(PROG)
 	exec $(PROG)
 
-.PHONY: run
+clean:
+	rm -r build
+
+.PHONY: run clean
