@@ -67,7 +67,7 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest);
 bool f_State_run(f_State *s, SliceConst bytecode);
 void f_State_compileAndRun(f_State *s, SliceConst line);
 SliceConst f_State_getToken(f_State *s);
-bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word);
+bool f_State_compileSingleWord(f_State *s, ArrayList *byte_al, SliceConst word, int jump);
 
 typedef enum f_Instruction {
 	F_INS_RETURN = 0, /* return */

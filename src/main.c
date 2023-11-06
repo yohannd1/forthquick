@@ -42,15 +42,18 @@ bool fw_beginComment2(f_State *s);
 bool fw_fetch(f_State *s);
 bool fw_store(f_State *s);
 bool fw_defVar(f_State *s);
+bool fw_dup(f_State *s);
 /* bool fw_toVar(f_State *s); */
 /* bool fw_fromVar(f_State *s); */
 bool fw_beginIf(f_State *s);
+bool fw_beginJmp(f_State *s);
 
 void defWords(f_State *s) {
 	/* memory primitives */
 	f_State_defineWord(s, "@", fw_fetch, false);
 	f_State_defineWord(s, "!", fw_store, false);
 	f_State_defineWord(s, "var:", fw_defVar, true);
+	f_State_defineWord(s, "dup", fw_dup, false);
 
 	/* int stuff */
 	f_State_defineWord(s, "+", fw_add, false);
@@ -81,6 +84,7 @@ void defWords(f_State *s) {
 	f_State_defineWord(s, "(", fw_beginComment, true);
 	f_State_defineWord(s, "((", fw_beginComment2, true);
 	f_State_defineWord(s, "if(", fw_beginIf, true);
+	f_State_defineWord(s, "jmp:", fw_beginIf, true);
 }
 
 int main(void) {
@@ -121,26 +125,30 @@ read_end:
 }
 
 char *promptReadLine(f_State *s) {
+    char *mem;
+
 #ifdef HAS_READLINE
-	char *mem = readline(s->prompt_string);
+	mem = readline(s->prompt_string);
 	if (mem == NULL) return NULL;
 	add_history(mem);
 #else
+	size_t bufsize = 128, i;
+
 	fprintf(stderr, "%s", s->prompt_string);
 
-	const size_t coarse_amount = 128;
-	size_t bufsize = coarse_amount;
-	char *mem = malloc(bufsize);
+	mem = malloc(bufsize);
 	if (mem == NULL) {
 		logD("OOM");
 		return NULL;
 	}
 
-	size_t i = 0;
-	for (;; i++) {
+	for (i = 0;; i++) {
+            int c;
+
 		if (i >= bufsize) {
-			bufsize += coarse_amount;
-			char *new = realloc(mem, bufsize);
+                    char *new;
+			bufsize *= 2;
+			new = realloc(mem, bufsize);
 			if (new == NULL) {
 				logD("OOM");
 				free(mem);
@@ -148,7 +156,7 @@ char *promptReadLine(f_State *s) {
 			}
 		}
 
-		int c = fgetc(stdin);
+		c = fgetc(stdin);
 		if (c == '\n') break;
 		if (c == EOF) {
 			free(mem);
@@ -207,6 +215,14 @@ DEF_BIN_ARITH_WORD(fw_flt, f_intToFloat(n1) < f_intToFloat(n2))
 DEF_BIN_ARITH_WORD(fw_fgt, f_intToFloat(n1) > f_intToFloat(n2))
 DEF_BIN_ARITH_WORD(fw_flte, f_intToFloat(n1) <= f_intToFloat(n2))
 DEF_BIN_ARITH_WORD(fw_fgte, f_intToFloat(n1) >= f_intToFloat(n2))
+
+DEFWORD(fw_dup, {
+	f_Int n;
+	TRY_POP(&n);
+	TRY_PUSH(n);
+	TRY_PUSH(n);
+	return true;
+})
 
 DEFWORD(fw_print, {
 	f_Int n;
@@ -292,7 +308,7 @@ bool fw_beginWordCompile(f_State *s) {
 			return true;
 		}
 
-		f_State_compileSingleWord(s, &b, w);
+		f_State_compileSingleWord(s, &b, w, 0);
 	}
 
 	logD("MissingToken(\";\")");
@@ -387,10 +403,28 @@ bool fw_beginIf(f_State *s) {
 			return true;
 		}
 
-		f_State_compileSingleWord(s, &ift, w);
+		f_State_compileSingleWord(s, &ift, w, 0);
 	}
 
 	logD("MissingToken(\")\")");
 	ArrayList_deinit(&ift);
+	return false;
+}
+
+bool fw_beginJmp(f_State *s) {
+	ArrayList *b = s->bytecode;
+	SliceConst wordname;
+
+	wordname = f_State_getToken(s);
+	if (wordname.ptr == NULL) {
+		logD("missing word name");
+		goto error;
+	}
+
+	f_State_compileSingleWord(s, b, wordname, 1);
+	return true;
+
+error:
+	ArrayList_deinit(b);
 	return false;
 }

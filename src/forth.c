@@ -131,7 +131,7 @@ bool f_State_compile(f_State *s, SliceConst line, SliceMut *dest) {
 	s->bytecode = &b;
 
 	while ((w = f_State_getToken(s)).ptr != NULL) {
-		if (!f_State_compileSingleWord(s, &b, w)) goto error;
+		if (!f_State_compileSingleWord(s, &b, w, 0)) goto error;
 	}
 
 	ArrayList_push(&b, F_INS_RETURN);
@@ -146,7 +146,7 @@ error:
 	return false;
 }
 
-bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
+bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w, int jump) {
 	bool int_ok = false;
 	Dict_Entry *e;
 	f_Int it;
@@ -162,7 +162,7 @@ bool f_State_compileSingleWord(f_State *s, ArrayList *b, SliceConst w) {
 		if (w->is_immediate) {
 			return f_State_evalWord(s, w);
 		}
-		ArrayList_push(b, F_INS_CALLWORD);
+		ArrayList_push(b, jump ? F_INS_JMPWORD : F_INS_CALLWORD);
 
 		ptr_int = (size_t) w;
 		for (i = sizeof(size_t); i > 0; i--) {
