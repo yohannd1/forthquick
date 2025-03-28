@@ -16,13 +16,15 @@ A dirty C89 implementation of a VM-based Forth.
 - [x] test-compile with clang and some other C compiler
 - [x] actually use return stack (I forgot that!!)
 - [ ] loops / tail recursion
+- [ ] very crappy malloc and free functions
+- [ ] I/O primitives (probably a `read` and `write` which take both a fd, a buf and the max len )
 - [ ] custom width variables?
 - [ ] `)else(` on if statement
-- [ ] I/O primitives (probably a `read` and `write` which take both a
-  fd, a buf and the max len )
+- [ ] how to handle nested if statements?
 - [ ] fix bug: anything after >v VARNAME is ignored??
 - [ ] lambdas (anonymous words)
 - [ ] dynamic word calling (for lambdas)
 - [ ] structs/tables/whatever (how would that work)
 - [ ] C integration?? :))
 - [ ] fibers? (how would that work? interpret code from each fiber alternatively?)
+- [ ] else-if (how to do this)
